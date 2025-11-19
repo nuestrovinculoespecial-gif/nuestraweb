@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quiero VÍNCULO – Pide tu recuerdo</title>
+
+  <style>
+    body.qv-body {
+      margin: 0;
+      font-family: "Georgia", serif;
+      background-color: #f6f0e8;
+      color: #1a1a1a;
+      line-height: 1.6;
+    }
+
+    .qv-header {
+      background: #fff;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      padding: 20px 0;
+    }
+    .qv-header-inner {
+      width: 90%;
+      max-width: 1200px;
+      margin: auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .qv-logo-text {
+      font-size: 26px;
+      letter-spacing: 2px;
+      font-weight: bold;
+    }
+    .qv-back {
+      text-decoration: none;
+      color: #caa546;
+      font-size: 15px;
+    }
+    .qv-back:hover {
+      text-decoration: underline;
+    }
+
+    .qv-main {
+      width: 90%;
+      max-width: 1200px;
+      margin: 40px auto;
+    }
+
+    .qv-hero-text h1 {
+      font-size: 38px;
+      margin-bottom: 10px;
+    }
+
+    .qv-event-types {
+      margin-top: 50px;
+    }
+    .qv-event-types h2 {
+      font-size: 28px;
+      margin-bottom: 20px;
+    }
+
+    .qv-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 20px;
+    }
+
+    .qv-card {
+      background: #fff;
+      padding: 25px;
+      border-radius: 16px;
+      border: 1px solid rgba(0,0,0,0.08);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+      transition: transform 0.2s ease;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+      position: relative;
+    }
+    .qv-card:hover {
+      transform: translateY(-3px);
+    }
+
+    /* Estilo del texto “Más info →” */
+    .mas-info {
+      text-align: right;
+      margin-top: 10px;
+      font-size: 14px;
+      color: #caa546;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body class="qv-body">
+
+  <header class="qv-header">
+    <div class="qv-header-inner">
+      <div class="qv-logo">
+        <span class="qv-logo-text">VÍNCULO</span>
+      </div>
+      <nav>
+        <a href="index.html" class="qv-back">← Volver a inicio</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="qv-main">
+
+  <div class="contenedor">
+
+        <h1>¿Para qué ocasiones sirve VÍNCULO?</h1>
+
+        <p class="sub">
+            VÍNCULO se adapta a muchos momentos importantes. Siempre que quieras que alguien 
+            se lleve un recuerdo único, puedes convertirlo en una moneda.
+        </p>
+
+      <div class="grid">
+
+      <div class="qv-event-types">
+        <h2>¿Qué tipo de recuerdo necesitas?</h2>
+        <div class="qv-cards">
+
+          <!-- TARJETA COMUNIÓN con “Más info →” -->
+          <a href="comuniones.html" class="qv-card">
+            <h3>Comunión</h3>
+            <p>Monedas para cada invitado y una hucha de recuerdos para el protagonista.</p>
+            <div class="mas-info">Más info →</div>
+          </a>
+
+          <div class="qv-card">
+            <h3>Bautizo</h3>
+            <p>Mensajes para el futuro, para que el niño pueda verlos cuando crezca.</p>
+          </div>
+          <div class="qv-card">
+            <h3>Bodas</h3>
+            <p>Obsequio para cada invitado con recuerdos del enlace.</p>
+          </div>
+          <div class="qv-card">
+            <h3>Profesores y alumnos</h3>
+            <p>Un recuerdo de fin de curso que une a la clase para siempre.</p>
+          </div>
+          <div class="qv-card">
+            <h3>Equipos deportivos</h3>
+            <p>Monedas con dorsal y vídeo de la temporada.</p>
+          </div>
+          <div class="qv-card">
+            <h3>Homenajes</h3>
+            <p>Un recuerdo especial para honrar a alguien importante.</p>
+          </div>
+          <div class="qv-card">
+            <h3>Otro momento</h3>
+            <p>Cualquier historia que quieras guardar.</p>
+          </div>
+        </div>
+      </div>
+
+    <section class="qv-hero">
+      <div class="qv-hero-text">
+        <h1>Cuéntanos sobre tu evento</h1>
+        <p>
+          Diseñamos y grabamos tus monedas VÍNCULO a medida de tu celebración.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <!-- BOTÓN AÑADIDO -->
+  <div style="text-align:center; margin:40px auto;">
+    <a href="formulario.html" style="
+        background:#caa546;
+        color:white;
+        padding:14px 28px;
+        border-radius:30px;
+        font-size:18px;
+        text-decoration:none;
+        font-family:Georgia, serif;
+        transition:0.3s;
+    " onmouseover="this.style.background='#b18f3d'" onmouseout="this.style.background='#caa546'">
+        Más información aquí
+    </a>
+  </div>
+
+</body>
+</html>
