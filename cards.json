@@ -1,0 +1,10 @@
+{
+  "DEMO": {
+    "initialVideoUrl": "https://nuestrovinculoespecial-gif.github.io/nuestraweb/comunionvideo.mp4",
+    "finalVideoUrl": null
+  },
+  "FAMILIA-1": {
+    "initialVideoUrl": "https://nuestrovinculoespecial-gif.github.io/nuestraweb/comunionvideo.mp4",
+    "finalVideoUrl": "https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4"
+  }
+}
