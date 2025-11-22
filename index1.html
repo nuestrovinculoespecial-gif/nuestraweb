@@ -95,8 +95,7 @@
   </div>
 
 
-    <script>
-
+   <script>
     // 1) Leer el cardId de la URL
     function obtenerCardId() {
       const params = new URLSearchParams(window.location.search);
@@ -108,17 +107,18 @@
     const cardId = obtenerCardId();
 
     // 2) Referencias a elementos de la página
-    const textoCard = document.getElementById("texto-card");
-    const player = document.getElementById("player");
-    const input = document.getElementById("archivo");
-    const boton = document.getElementById("botonSubir");
-    const mensaje = document.getElementById("mensaje");
+    const textoCard   = document.getElementById("texto-card");
+    const player      = document.getElementById("player");
+    const input       = document.getElementById("archivo");
+    const boton       = document.getElementById("botonSubir");
+    const mensaje     = document.getElementById("mensaje");
+    const panelSubida = document.getElementById("panel-subida");
 
     textoCard.textContent = "Esta tarjeta es: " + cardId;
 
     // 3) Valores por defecto (por si algo falla)
     const URL_INICIAL_DEFECTO = "https://nuestrovinculoespecial-gif.github.io/nuestraweb/comunionvideo.mp4";
-    let urlInicial = URL_INICIAL_DEFECTO;
+    let urlInicial   = URL_INICIAL_DEFECTO;
     let urlVideoFinal = "";
 
     function mostrarVideoActual() {
@@ -138,27 +138,24 @@
         const datos = cards[cardId];
 
         if (!datos) {
-          // Si no hay datos para ese cardId, usamos los valores por defecto
+          // Tarjeta no registrada
           mensaje.textContent = "Esta tarjeta aún no está registrada. Se muestra el vídeo inicial.";
           urlInicial = URL_INICIAL_DEFECTO;
           urlVideoFinal = "";
 
-          // Aseguramos que se vea el formulario de subida
-          input.style.display = "block";
-          boton.style.display = "inline-block";
+          // Panel de subida visible
+          if (panelSubida) panelSubida.style.display = "block";
         } else {
-          urlInicial = datos.initialVideoUrl || URL_INICIAL_DEFECTO;
+          urlInicial   = datos.initialVideoUrl || URL_INICIAL_DEFECTO;
           urlVideoFinal = datos.finalVideoUrl || "";
 
           if (urlVideoFinal) {
-            // YA HAY VÍDEO FINAL → NO mostramos el botón ni el input
-            input.style.display = "none";
-            boton.style.display = "none";
+            // YA HAY VÍDEO FINAL → ocultamos TODO el panel de subida
+            if (panelSubida) panelSubida.style.display = "none";
             mensaje.textContent = "Esta tarjeta ya tiene un vídeo final guardado.";
           } else {
-            // TODAVÍA NO HAY VÍDEO FINAL → mostramos el formulario
-            input.style.display = "block";
-            boton.style.display = "inline-block";
+            // TODAVÍA NO HAY VÍDEO FINAL → mostramos el panel de subida
+            if (panelSubida) panelSubida.style.display = "block";
             mensaje.textContent = "Todavía no hay vídeo final. Podéis subir vuestro vídeo.";
           }
         }
@@ -168,9 +165,8 @@
         urlInicial = URL_INICIAL_DEFECTO;
         urlVideoFinal = "";
 
-        // En caso de error, dejamos el formulario visible
-        input.style.display = "block";
-        boton.style.display = "inline-block";
+        // En caso de error, dejamos el panel visible
+        if (panelSubida) panelSubida.style.display = "block";
       } finally {
         mostrarVideoActual();
       }
@@ -193,5 +189,6 @@
 
 </body>
 </html>
+
 
 
