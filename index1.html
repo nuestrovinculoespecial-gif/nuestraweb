@@ -15,7 +15,7 @@
       align-items: center;
       justify-content: flex-start;
       min-height: 100vh;
-      padding: 10px;
+      padding: 16px;
       box-sizing: border-box;
     }
     video {
@@ -23,131 +23,46 @@
       max-height: 60vh;
       background: #000;
     }
-    .panel {
-      margin-top: 15px;
-      width: 100%;
-      max-width: 480px;
-      background: #111;
+    #panel-subida {
+      margin-top: 20px;
+      padding: 16px;
+      background: #222;
       border-radius: 10px;
-      padding: 12px;
-      box-sizing: border-box;
-    }
-    .panel h2 {
-      margin: 0 0 8px 0;
-      font-size: 16px;
-    }
-    .panel p {
-      margin: 4px 0;
-      font-size: 14px;
-      line-height: 1.4;
-    }
-    input[type="file"] {
-      margin-top: 8px;
-      font-size: 14px;
+      text-align: center;
       width: 100%;
+      max-width: 500px;
     }
-    button {
-      margin-top: 10px;
-      padding: 8px 12px;
-      font-size: 14px;
-      border-radius: 6px;
+    #panel-subida h2 {
+      margin-top: 0;
+      margin-bottom: 8px;
+      font-size: 18px;
+    }
+    #botonSubir {
+      margin-top: 12px;
+      padding: 10px 16px;
+      font-size: 16px;
+      border-radius: 8px;
       border: none;
       cursor: pointer;
-    }
-    button:disabled {
-      opacity: 0.6;
-      cursor: default;
-    }
-    #mensaje {
-      margin-top: 8px;
-      font-size: 13px;
-      min-height: 18px;
+      background: #ff4081;
+      color: #fff;
+      font-weight: 600;
     }
   </style>
 </head>
 <body>
 
-  <!-- VÍDEO QUE SE VE SIEMPRE -->
-  <video id="player" controls autoplay>
+  <!-- VÍDEO -->
+  <video controls autoplay src="https://nuestrovinculoespecial-gif.github.io/nuestraweb/comunionvideo.mp4">
     Tu navegador no soporta vídeo HTML5.
   </video>
 
-  <!-- PANEL PARA SUBIR EL NUEVO VÍDEO -->
-  <div class="panel">
+  <!-- PANEL CON EL BOTÓN -->
+  <div id="panel-subida">
     <h2>Sube aquí vuestro vídeo de recuerdo</h2>
-    <p>Elige un vídeo del móvil y pulsa “Subir mi vídeo”.</p>
-    <input type="file" id="archivo" accept="video/*">
-    <button id="botonSubir">Subir mi vídeo</button>
-    <div id="mensaje"></div>
+    <p>(De momento este botón solo es de prueba, todavía no sube nada.)</p>
+    <button id="botonSubir">🔼 Subir mi vídeo</button>
   </div>
 
-  <script>
-    // 1) VÍDEO INICIAL (el que ya tienes en GitHub)
-    const URL_INICIAL = "https://nuestrovinculoespecial-gif.github.io/nuestraweb/comunionvideo.mp4";
-
-    // 2) MÁS ADELANTE: aquí pondremos la URL que te devuelva Arweave
-    //    Por ahora lo dejamos vacío.
-    let urlVideoFinal = "";
-
-    const video = document.getElementById("player");
-    const input = document.getElementById("archivo");
-    const botonSubir = document.getElementById("botonSubir");
-    const mensaje = document.getElementById("mensaje");
-
-    // Al cargar la página, mostramos el vídeo inicial (si no hay final aún)
-    function refrescarVideo() {
-      const url = urlVideoFinal || URL_INICIAL;
-      video.src = url;
-    }
-    refrescarVideo();
-
-    // CUANDO EL USUARIO PULSE "SUBIR MI VÍDEO"
-    botonSubir.addEventListener("click", async () => {
-      const fichero = input.files[0];
-      if (!fichero) {
-        mensaje.textContent = "Primero elige un vídeo de tu móvil.";
-        return;
-      }
-
-      // Aquí empieza la parte "automática"
-      // 1) Mostramos mensaje de espera
-      mensaje.textContent = "Subiendo el vídeo... puede tardar un poco.";
-      botonSubir.disabled = true;
-
-      try {
-        // 2) Preparamos el paquete para enviarlo a UN SERVICIO QUE LO GUARDE
-        const formData = new FormData();
-        formData.append("video", fichero);
-
-        // IMPORTANTE:
-        // Esta URL es un ejemplo. Aquí tienes que poner
-        // la dirección de TU servicio que reciba el vídeo,
-        // lo suba a Arweave y devuelva el enlace.
-        const respuesta = await fetch("https://TU-SERVICIO-DE-SUBIDA.com/subir", {
-          method: "POST",
-          body: formData
-        });
-
-        if (!respuesta.ok) {
-          throw new Error("Error al subir el vídeo");
-        }
-
-        const datos = await respuesta.json();
-        // Suponemos que el servicio devuelve algo así:
-        // { videoUrl: "https://arweave.net/XXXXXXXX" }
-        urlVideoFinal = datos.videoUrl;
-
-        // 3) Actualizamos el vídeo que se ve en la página
-        refrescarVideo();
-
-        mensaje.textContent = "¡Vídeo subido! Este será vuestro recuerdo permanente.";
-      } catch (err) {
-        console.error(err);
-        mensaje.textContent = "Ha habido un problema al subir el vídeo. Inténtalo de nuevo.";
-      } finally {
-        botonSubir.disabled = false;
-      }
-    });
-  </script>
 </body>
 </html>
