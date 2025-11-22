@@ -97,7 +97,18 @@
     <button id="botonSubir">🔼 Subir mi vídeo</button>
   </div>
 
+<script>
+  ...
+</script>
+Selecciona desde <script> hasta </script> y bórralo.
+Luego pega este código (ojo con cambiar la URL del backend):
+
+html
+Copiar código
   <script>
+    // ⚙️ PON AQUÍ LA URL DE TU BACKEND EN RENDER
+    const API_BASE = "https://vinculo-backend.onrender.com";
+
     // 1) Leer el cardId de la URL
     function obtenerCardId() {
       const params = new URLSearchParams(window.location.search);
@@ -127,43 +138,36 @@
       player.src = url;
     }
 
-    // 4) Cargar datos de la tarjeta desde cards.json
+    // 4) Cargar datos de la tarjeta desde el BACKEND REAL
     async function cargarDatosTarjeta() {
       try {
-        const resp = await fetch("cards.json");
+        const resp = await fetch(API_BASE + "/card/" + encodeURIComponent(cardId));
         if (!resp.ok) {
-          throw new Error("No se pudo cargar cards.json");
+          throw new Error("No se pudo cargar la tarjeta");
         }
-        const cards = await resp.json();
-        const datos = cards[cardId];
+        const datos = await resp.json();
 
-        if (!datos) {
-          // Tarjeta no registrada
-          mensaje.textContent = "Esta tarjeta aún no está registrada. Se muestra el vídeo inicial y se permite subir uno.";
-          urlInicial    = URL_INICIAL_DEFECTO;
-          urlVideoFinal = "";
-          // MOSTRAR panel de subida
-          panelSubida.style.display = "block";
+        urlInicial    = datos.initialVideoUrl || URL_INICIAL_DEFECTO;
+        urlVideoFinal = datos.finalVideoUrl || "";
+
+        if (urlVideoFinal) {
+          // YA HAY VÍDEO FINAL → ocultamos el panel de subida
+          panelSubida.style.display = "none";
+          mensaje.textContent = "Esta tarjeta ya tiene un vídeo final guardado.";
         } else {
-          urlInicial    = datos.initialVideoUrl || URL_INICIAL_DEFECTO;
-          urlVideoFinal = datos.finalVideoUrl || "";
-
-          if (urlVideoFinal) {
-            // YA HAY VÍDEO FINAL → OCULTAR panel
-            panelSubida.style.display = "none";
-            mensaje.textContent = "Esta tarjeta ya tiene un vídeo final guardado.";
+          // NO HAY VÍDEO FINAL → mostramos el panel
+          panelSubida.style.display = "block";
+          if (datos.registered === false) {
+            mensaje.textContent = "Esta tarjeta aún no está registrada. Se muestra el vídeo inicial y se permite subir uno.";
           } else {
-            // NO HAY VÍDEO FINAL → MOSTRAR panel
-            panelSubida.style.display = "block";
             mensaje.textContent = "Todavía no hay vídeo final. Podéis subir vuestro vídeo.";
           }
         }
       } catch (e) {
         console.error(e);
-        mensaje.textContent = "Problema al cargar la información de la tarjeta. Se muestra el vídeo inicial y se permite subir uno.";
+        mensaje.textContent = "Problema al cargar la información de la tarjeta. Se muestra el vídeo inicial.";
         urlInicial    = URL_INICIAL_DEFECTO;
         urlVideoFinal = "";
-        // En caso de error, dejamos el panel visible
         panelSubida.style.display = "block";
       } finally {
         mostrarVideoActual();
@@ -172,16 +176,51 @@
 
     cargarDatosTarjeta();
 
-    // 5) De momento, el botón SOLO explica qué pasaría
-    boton.addEventListener("click", () => {
+    // 5) Cuando pulsan "Subir mi vídeo", enviamos el archivo al backend
+    boton.addEventListener("click", async () => {
       const fichero = input.files[0];
       if (!fichero) {
         mensaje.textContent = "Primero elige un vídeo de tu móvil.";
         return;
       }
-      mensaje.textContent = "En la versión completa, aquí se enviaría el vídeo de " + cardId + " al servidor para guardarlo en Arweave.";
+
+      mensaje.textContent = "Subiendo el vídeo... puede tardar un poco.";
+      boton.disabled = true;
+
+      try {
+        const formData = new FormData();
+        formData.append("video", fichero);
+
+        const resp = await fetch(
+          API_BASE + "/card/" + encodeURIComponent(cardId) + "/upload",
+          {
+            method: "POST",
+            body: formData
+          }
+        );
+
+        if (!resp.ok) {
+          throw new Error("Error al subir el vídeo");
+        }
+
+        const datos = await resp.json();
+        if (!datos.videoUrl) {
+          throw new Error("Respuesta sin videoUrl");
+        }
+
+        // Actualizamos el vídeo final y ocultamos el panel de subida
+        urlVideoFinal = datos.videoUrl;
+        mostrarVideoActual();
+        panelSubida.style.display = "none";
+        mensaje.textContent = "¡Vídeo subido! Este será vuestro recuerdo permanente (en esta demo la URL es simulada).";
+      } catch (e) {
+        console.error(e);
+        mensaje.textContent = "Ha habido un problema al subir el vídeo. Inténtalo de nuevo.";
+      } finally {
+        boton.disabled = false;
+      }
     });
   </script>
-
 </body>
 </html>
+
