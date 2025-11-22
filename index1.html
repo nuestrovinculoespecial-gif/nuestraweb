@@ -23,8 +23,18 @@
       max-height: 60vh;
       background: #000;
     }
+    #panel-info {
+      margin-top: 12px;
+      padding: 10px;
+      background: #111;
+      border-radius: 8px;
+      text-align: center;
+      width: 100%;
+      max-width: 500px;
+      font-size: 14px;
+    }
     #panel-subida {
-      margin-top: 20px;
+      margin-top: 16px;
       padding: 16px;
       background: #222;
       border-radius: 10px;
@@ -37,6 +47,14 @@
       margin-bottom: 8px;
       font-size: 18px;
     }
+    #panel-subida p {
+      margin: 4px 0;
+      font-size: 14px;
+    }
+    input[type="file"] {
+      margin-top: 8px;
+      width: 100%;
+    }
     #botonSubir {
       margin-top: 12px;
       padding: 10px 16px;
@@ -48,21 +66,78 @@
       color: #fff;
       font-weight: 600;
     }
+    #mensaje {
+      margin-top: 8px;
+      font-size: 13px;
+      min-height: 18px;
+    }
   </style>
 </head>
 <body>
 
   <!-- VÍDEO -->
-  <video controls autoplay src="https://nuestrovinculoespecial-gif.github.io/nuestraweb/comunionvideo.mp4">
+  <video id="player" controls autoplay>
     Tu navegador no soporta vídeo HTML5.
   </video>
 
-  <!-- PANEL CON EL BOTÓN -->
+  <!-- INFO DE LA TARJETA -->
+  <div id="panel-info">
+    <span id="texto-card"></span>
+  </div>
+
+  <!-- PANEL CON EL BOTÓN (aún sin backend real) -->
   <div id="panel-subida">
     <h2>Sube aquí vuestro vídeo de recuerdo</h2>
-    <p>(De momento este botón solo es de prueba, todavía no sube nada.)</p>
+    <p>Esta versión es de prueba: el botón todavía no sube nada de verdad.</p>
+    <input type="file" id="archivo" accept="video/*">
     <button id="botonSubir">🔼 Subir mi vídeo</button>
+    <div id="mensaje"></div>
   </div>
+
+  <script>
+    // 1) Leer el cardId de la URL
+    function obtenerCardId() {
+      const params = new URLSearchParams(window.location.search);
+      // ?card=ABCD1234
+      const card = params.get("card");
+      return card || "DEMO"; // si no hay card, usamos DEMO
+    }
+
+    const cardId = obtenerCardId();
+
+    // 2) Mostrar el cardId en pantalla
+    const textoCard = document.getElementById("texto-card");
+    textoCard.textContent = "Esta tarjeta es: " + cardId;
+
+    // 3) Vídeo inicial (de la niña)
+    const URL_INICIAL = "https://nuestrovinculoespecial-gif.github.io/nuestraweb/comunionvideo.mp4";
+
+    // Más adelante, aquí guardaremos la URL de Arweave que venga del backend
+    let urlVideoFinal = "";
+
+    const player = document.getElementById("player");
+    const input = document.getElementById("archivo");
+    const boton = document.getElementById("botonSubir");
+    const mensaje = document.getElementById("mensaje");
+
+    function mostrarVideoActual() {
+      const url = urlVideoFinal || URL_INICIAL;
+      player.src = url;
+    }
+
+    mostrarVideoActual();
+
+    // 4) De momento, el botón SOLO simula el flujo
+    boton.addEventListener("click", () => {
+      const fichero = input.files[0];
+      if (!fichero) {
+        mensaje.textContent = "Primero elige un vídeo de tu móvil.";
+        return;
+      }
+
+      mensaje.textContent = "En la versión completa, aquí se enviaría el vídeo de " + cardId + " al servidor.";
+    });
+  </script>
 
 </body>
 </html>
