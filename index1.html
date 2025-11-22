@@ -41,6 +41,9 @@
       text-align: center;
       width: 100%;
       max-width: 500px;
+      /* IMPORTANTE: por defecto oculto;
+         sólo se mostrará si NO hay vídeo final */
+      display: none;
     }
     #panel-subida h2 {
       margin-top: 0;
@@ -83,30 +86,28 @@
   <!-- INFO DE LA TARJETA -->
   <div id="panel-info">
     <span id="texto-card"></span>
+    <div id="mensaje"></div>
   </div>
 
-  <!-- PANEL CON EL BOTÓN (aún sin backend real) -->
+  <!-- PANEL CON EL BOTÓN (solo si NO hay vídeo final) -->
   <div id="panel-subida">
     <h2>Sube aquí vuestro vídeo de recuerdo</h2>
     <p>Esta versión es de prueba: el botón todavía no sube nada de verdad.</p>
     <input type="file" id="archivo" accept="video/*">
     <button id="botonSubir">🔼 Subir mi vídeo</button>
-    <div id="mensaje"></div>
   </div>
 
-
-   <script>
+  <script>
     // 1) Leer el cardId de la URL
     function obtenerCardId() {
       const params = new URLSearchParams(window.location.search);
-      // ?card=ABCD1234
       const card = params.get("card");
       return card || "DEMO"; // si no hay card, usamos DEMO
     }
 
     const cardId = obtenerCardId();
 
-    // 2) Referencias a elementos de la página
+    // 2) Referencias
     const textoCard   = document.getElementById("texto-card");
     const player      = document.getElementById("player");
     const input       = document.getElementById("archivo");
@@ -116,9 +117,9 @@
 
     textoCard.textContent = "Esta tarjeta es: " + cardId;
 
-    // 3) Valores por defecto (por si algo falla)
+    // 3) Valores por defecto
     const URL_INICIAL_DEFECTO = "https://nuestrovinculoespecial-gif.github.io/nuestraweb/comunionvideo.mp4";
-    let urlInicial   = URL_INICIAL_DEFECTO;
+    let urlInicial    = URL_INICIAL_DEFECTO;
     let urlVideoFinal = "";
 
     function mostrarVideoActual() {
@@ -126,7 +127,7 @@
       player.src = url;
     }
 
-    // 4) Cargar datos de la tarjeta desde cards.json (nuestro "mini backend")
+    // 4) Cargar datos de la tarjeta desde cards.json
     async function cargarDatosTarjeta() {
       try {
         const resp = await fetch("cards.json");
@@ -134,39 +135,36 @@
           throw new Error("No se pudo cargar cards.json");
         }
         const cards = await resp.json();
-
         const datos = cards[cardId];
 
         if (!datos) {
           // Tarjeta no registrada
-          mensaje.textContent = "Esta tarjeta aún no está registrada. Se muestra el vídeo inicial.";
-          urlInicial = URL_INICIAL_DEFECTO;
+          mensaje.textContent = "Esta tarjeta aún no está registrada. Se muestra el vídeo inicial y se permite subir uno.";
+          urlInicial    = URL_INICIAL_DEFECTO;
           urlVideoFinal = "";
-
-          // Panel de subida visible
-          if (panelSubida) panelSubida.style.display = "block";
+          // MOSTRAR panel de subida
+          panelSubida.style.display = "block";
         } else {
-          urlInicial   = datos.initialVideoUrl || URL_INICIAL_DEFECTO;
+          urlInicial    = datos.initialVideoUrl || URL_INICIAL_DEFECTO;
           urlVideoFinal = datos.finalVideoUrl || "";
 
           if (urlVideoFinal) {
-            // YA HAY VÍDEO FINAL → ocultamos TODO el panel de subida
-            if (panelSubida) panelSubida.style.display = "none";
+            // YA HAY VÍDEO FINAL → OCULTAR panel
+            panelSubida.style.display = "none";
             mensaje.textContent = "Esta tarjeta ya tiene un vídeo final guardado.";
           } else {
-            // TODAVÍA NO HAY VÍDEO FINAL → mostramos el panel de subida
-            if (panelSubida) panelSubida.style.display = "block";
+            // NO HAY VÍDEO FINAL → MOSTRAR panel
+            panelSubida.style.display = "block";
             mensaje.textContent = "Todavía no hay vídeo final. Podéis subir vuestro vídeo.";
           }
         }
       } catch (e) {
         console.error(e);
-        mensaje.textContent = "Problema al cargar la información de la tarjeta. Se muestra el vídeo inicial.";
-        urlInicial = URL_INICIAL_DEFECTO;
+        mensaje.textContent = "Problema al cargar la información de la tarjeta. Se muestra el vídeo inicial y se permite subir uno.";
+        urlInicial    = URL_INICIAL_DEFECTO;
         urlVideoFinal = "";
-
         // En caso de error, dejamos el panel visible
-        if (panelSubida) panelSubida.style.display = "block";
+        panelSubida.style.display = "block";
       } finally {
         mostrarVideoActual();
       }
@@ -181,14 +179,9 @@
         mensaje.textContent = "Primero elige un vídeo de tu móvil.";
         return;
       }
-
       mensaje.textContent = "En la versión completa, aquí se enviaría el vídeo de " + cardId + " al servidor para guardarlo en Arweave.";
     });
   </script>
 
-
 </body>
 </html>
-
-
-
