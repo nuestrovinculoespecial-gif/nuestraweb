@@ -94,50 +94,87 @@
     <div id="mensaje"></div>
   </div>
 
-  <script>
-    // 1) Leer el cardId de la URL
-    function obtenerCardId() {
-      const params = new URLSearchParams(window.location.search);
-      // ?card=ABCD1234
-      const card = params.get("card");
-      return card || "DEMO"; // si no hay card, usamos DEMO
-    }
 
-    const cardId = obtenerCardId();
+    <script>
+ // 1) Leer el cardId de la URL
+ function obtenerCardId() {
+   const params = new URLSearchParams(window.location.search);
+   // ?card=ABCD1234
+   const card = params.get("card");
+   return card || "DEMO"; // si no hay card, usamos DEMO
+ }
 
-    // 2) Mostrar el cardId en pantalla
-    const textoCard = document.getElementById("texto-card");
-    textoCard.textContent = "Esta tarjeta es: " + cardId;
+ const cardId = obtenerCardId();
 
-    // 3) Vídeo inicial (de la niña)
-    const URL_INICIAL = "https://nuestrovinculoespecial-gif.github.io/nuestraweb/comunionvideo.mp4";
+ // 2) Referencias a elementos de la página
+ const textoCard = document.getElementById("texto-card");
+ const player = document.getElementById("player");
+ const input = document.getElementById("archivo");
+ const boton = document.getElementById("botonSubir");
+ const mensaje = document.getElementById("mensaje");
 
-    // Más adelante, aquí guardaremos la URL de Arweave que venga del backend
-    let urlVideoFinal = "";
+ textoCard.textContent = "Esta tarjeta es: " + cardId;
 
-    const player = document.getElementById("player");
-    const input = document.getElementById("archivo");
-    const boton = document.getElementById("botonSubir");
-    const mensaje = document.getElementById("mensaje");
+ // 3) Valores por defecto (por si algo falla)
+ const URL_INICIAL_DEFECTO = "https://nuestrovinculoespecial-gif.github.io/nuestraweb/comunionvideo.mp4";
+ let urlInicial = URL_INICIAL_DEFECTO;
+ let urlVideoFinal = "";
 
-    function mostrarVideoActual() {
-      const url = urlVideoFinal || URL_INICIAL;
-      player.src = url;
-    }
+ function mostrarVideoActual() {
+   const url = urlVideoFinal || urlInicial;
+   player.src = url;
+ }
 
-    mostrarVideoActual();
+ // 4) Cargar datos de la tarjeta desde cards.json (nuestro "mini backend")
+ async function cargarDatosTarjeta() {
+   try {
+     const resp = await fetch("cards.json");
+     if (!resp.ok) {
+       throw new Error("No se pudo cargar cards.json");
+     }
+     const cards = await resp.json();
 
-    // 4) De momento, el botón SOLO simula el flujo
-    boton.addEventListener("click", () => {
-      const fichero = input.files[0];
-      if (!fichero) {
-        mensaje.textContent = "Primero elige un vídeo de tu móvil.";
-        return;
-      }
+     const datos = cards[cardId];
 
-      mensaje.textContent = "En la versión completa, aquí se enviaría el vídeo de " + cardId + " al servidor.";
-    });
+     if (!datos) {
+       // Si no hay datos para ese cardId, usamos los valores por defecto
+       mensaje.textContent = "Esta tarjeta aún no está registrada. Se muestra el vídeo inicial.";
+       urlInicial = URL_INICIAL_DEFECTO;
+       urlVideoFinal = "";
+     } else {
+       urlInicial = datos.initialVideoUrl || URL_INICIAL_DEFECTO;
+       urlVideoFinal = datos.finalVideoUrl || "";
+       if (urlVideoFinal) {
+         mensaje.textContent = "Esta tarjeta ya tiene un vídeo final guardado.";
+       } else {
+         mensaje.textContent = "Todavía no hay vídeo final. Podéis subir vuestro vídeo.";
+       }
+     }
+   } catch (e) {
+     console.error(e);
+     mensaje.textContent = "Problema al cargar la información de la tarjeta. Se muestra el vídeo inicial.";
+     urlInicial = URL_INICIAL_DEFECTO;
+     urlVideoFinal = "";
+   } finally {
+     mostrarVideoActual();
+   }
+ }
+
+ cargarDatosTarjeta();
+
+ // 5) De momento, el botón SOLO explica qué pasaría
+ boton.addEventListener("click", () => {
+   const fichero = input.files[0];
+   if (!fichero) {
+     mensaje.textContent = "Primero elige un vídeo de tu móvil.";
+     return;
+   }
+
+   mensaje.textContent = "En la versión completa, aquí se enviaría el vídeo de " + cardId + " al servidor para guardarlo en Arweave.";
+ });
+
   </script>
 
 </body>
 </html>
+
