@@ -96,85 +96,102 @@
 
 
     <script>
- // 1) Leer el cardId de la URL
- function obtenerCardId() {
-   const params = new URLSearchParams(window.location.search);
-   // ?card=ABCD1234
-   const card = params.get("card");
-   return card || "DEMO"; // si no hay card, usamos DEMO
- }
 
- const cardId = obtenerCardId();
+    // 1) Leer el cardId de la URL
+    function obtenerCardId() {
+      const params = new URLSearchParams(window.location.search);
+      // ?card=ABCD1234
+      const card = params.get("card");
+      return card || "DEMO"; // si no hay card, usamos DEMO
+    }
 
- // 2) Referencias a elementos de la página
- const textoCard = document.getElementById("texto-card");
- const player = document.getElementById("player");
- const input = document.getElementById("archivo");
- const boton = document.getElementById("botonSubir");
- const mensaje = document.getElementById("mensaje");
+    const cardId = obtenerCardId();
 
- textoCard.textContent = "Esta tarjeta es: " + cardId;
+    // 2) Referencias a elementos de la página
+    const textoCard = document.getElementById("texto-card");
+    const player = document.getElementById("player");
+    const input = document.getElementById("archivo");
+    const boton = document.getElementById("botonSubir");
+    const mensaje = document.getElementById("mensaje");
 
- // 3) Valores por defecto (por si algo falla)
- const URL_INICIAL_DEFECTO = "https://nuestrovinculoespecial-gif.github.io/nuestraweb/comunionvideo.mp4";
- let urlInicial = URL_INICIAL_DEFECTO;
- let urlVideoFinal = "";
+    textoCard.textContent = "Esta tarjeta es: " + cardId;
 
- function mostrarVideoActual() {
-   const url = urlVideoFinal || urlInicial;
-   player.src = url;
- }
+    // 3) Valores por defecto (por si algo falla)
+    const URL_INICIAL_DEFECTO = "https://nuestrovinculoespecial-gif.github.io/nuestraweb/comunionvideo.mp4";
+    let urlInicial = URL_INICIAL_DEFECTO;
+    let urlVideoFinal = "";
 
- // 4) Cargar datos de la tarjeta desde cards.json (nuestro "mini backend")
- async function cargarDatosTarjeta() {
-   try {
-     const resp = await fetch("cards.json");
-     if (!resp.ok) {
-       throw new Error("No se pudo cargar cards.json");
-     }
-     const cards = await resp.json();
+    function mostrarVideoActual() {
+      const url = urlVideoFinal || urlInicial;
+      player.src = url;
+    }
 
-     const datos = cards[cardId];
+    // 4) Cargar datos de la tarjeta desde cards.json (nuestro "mini backend")
+    async function cargarDatosTarjeta() {
+      try {
+        const resp = await fetch("cards.json");
+        if (!resp.ok) {
+          throw new Error("No se pudo cargar cards.json");
+        }
+        const cards = await resp.json();
 
-     if (!datos) {
-       // Si no hay datos para ese cardId, usamos los valores por defecto
-       mensaje.textContent = "Esta tarjeta aún no está registrada. Se muestra el vídeo inicial.";
-       urlInicial = URL_INICIAL_DEFECTO;
-       urlVideoFinal = "";
-     } else {
-       urlInicial = datos.initialVideoUrl || URL_INICIAL_DEFECTO;
-       urlVideoFinal = datos.finalVideoUrl || "";
-       if (urlVideoFinal) {
-         mensaje.textContent = "Esta tarjeta ya tiene un vídeo final guardado.";
-       } else {
-         mensaje.textContent = "Todavía no hay vídeo final. Podéis subir vuestro vídeo.";
-       }
-     }
-   } catch (e) {
-     console.error(e);
-     mensaje.textContent = "Problema al cargar la información de la tarjeta. Se muestra el vídeo inicial.";
-     urlInicial = URL_INICIAL_DEFECTO;
-     urlVideoFinal = "";
-   } finally {
-     mostrarVideoActual();
-   }
- }
+        const datos = cards[cardId];
 
- cargarDatosTarjeta();
+        if (!datos) {
+          // Si no hay datos para ese cardId, usamos los valores por defecto
+          mensaje.textContent = "Esta tarjeta aún no está registrada. Se muestra el vídeo inicial.";
+          urlInicial = URL_INICIAL_DEFECTO;
+          urlVideoFinal = "";
 
- // 5) De momento, el botón SOLO explica qué pasaría
- boton.addEventListener("click", () => {
-   const fichero = input.files[0];
-   if (!fichero) {
-     mensaje.textContent = "Primero elige un vídeo de tu móvil.";
-     return;
-   }
+          // Aseguramos que se vea el formulario de subida
+          input.style.display = "block";
+          boton.style.display = "inline-block";
+        } else {
+          urlInicial = datos.initialVideoUrl || URL_INICIAL_DEFECTO;
+          urlVideoFinal = datos.finalVideoUrl || "";
 
-   mensaje.textContent = "En la versión completa, aquí se enviaría el vídeo de " + cardId + " al servidor para guardarlo en Arweave.";
- });
+          if (urlVideoFinal) {
+            // YA HAY VÍDEO FINAL → NO mostramos el botón ni el input
+            input.style.display = "none";
+            boton.style.display = "none";
+            mensaje.textContent = "Esta tarjeta ya tiene un vídeo final guardado.";
+          } else {
+            // TODAVÍA NO HAY VÍDEO FINAL → mostramos el formulario
+            input.style.display = "block";
+            boton.style.display = "inline-block";
+            mensaje.textContent = "Todavía no hay vídeo final. Podéis subir vuestro vídeo.";
+          }
+        }
+      } catch (e) {
+        console.error(e);
+        mensaje.textContent = "Problema al cargar la información de la tarjeta. Se muestra el vídeo inicial.";
+        urlInicial = URL_INICIAL_DEFECTO;
+        urlVideoFinal = "";
 
+        // En caso de error, dejamos el formulario visible
+        input.style.display = "block";
+        boton.style.display = "inline-block";
+      } finally {
+        mostrarVideoActual();
+      }
+    }
+
+    cargarDatosTarjeta();
+
+    // 5) De momento, el botón SOLO explica qué pasaría
+    boton.addEventListener("click", () => {
+      const fichero = input.files[0];
+      if (!fichero) {
+        mensaje.textContent = "Primero elige un vídeo de tu móvil.";
+        return;
+      }
+
+      mensaje.textContent = "En la versión completa, aquí se enviaría el vídeo de " + cardId + " al servidor para guardarlo en Arweave.";
+    });
   </script>
+
 
 </body>
 </html>
+
 
