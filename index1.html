@@ -97,6 +97,13 @@
 
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Ethers (para hablar con MetaMask) -->
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+
+  <!-- Bundlr UMD bundle (versión navegador) -->
+  <script src="https://unpkg.com/@bundlr-network/client/build/bundle.js"></script>
+
+  
   <script>
     // ⚙️ TUS DATOS DE SUPABASE (los que ya habías puesto)
     const SUPABASE_URL = "https://zcmvxijifgdjqjjhwfcy.supabase.co";
@@ -178,12 +185,65 @@
 
     cargarDatosTarjeta();
 
-    // 📌 5) Función de subida "falsa" (luego la cambiaremos por Bundlr/Arweave)
-    async function uploadVideoToArweaveMock(file) {
-      // De momento, sólo generamos una URL local para probar el flujo.
-      // Aquí luego conectaremos Bundlr + Arweave y devolveremos la URL real.
-      return URL.createObjectURL(file);
-    }
+  async function uploadVideoToArweave(file) {
+  if (!window.ethereum) {
+    throw new Error("Necesitas MetaMask instalado para subir el vídeo.");
+  }
+
+  // Pedimos conexión a MetaMask
+  await window.ethereum.request({ method: "eth_requestAccounts" });
+
+  // Provider de ethers a partir de MetaMask
+  const provider = new ethers.providers.Web3Provider(window.ethereum);
+  await provider._ready();
+
+  // Buscar la clase WebBundlr expuesta por el bundle UMD
+  const WebBundlrClass =
+    window.WebBundlr || (window.Bundlr && window.Bundlr.WebBundlr);
+
+  if (!WebBundlrClass) {
+    console.error("No encuentro WebBundlr en la librería Bundlr.");
+    throw new Error("Problema cargando Bundlr en el navegador.");
+  }
+
+  // Conectamos con el nodo principal de Bundlr (mainnet)
+  const bundlr = new WebBundlrClass(
+    "https://node1.bundlr.network",
+    "matic",  // usamos MATIC/POL de Polygon
+    provider
+  );
+
+  await bundlr.ready();
+
+  // Pasamos el archivo a bytes
+  const data = new Uint8Array(await file.arrayBuffer());
+
+  // Precio de subir este archivo
+  const price = await bundlr.getPrice(data.length);
+  console.log("Precio aproximado (en base units):", price.toString());
+
+  // Balance ya cargado en Bundlr
+  const balance = await bundlr.getLoadedBalance();
+
+  // Si falta saldo, financiamos la diferencia
+  if (balance.lt(price)) {
+    const diff = price.minus(balance);
+    console.log("Financiando Bundlr con:", diff.toString());
+    await bundlr.fund(diff);
+  }
+
+  // Subimos a Arweave
+  console.log("Subiendo a Arweave...");
+  const tx = await bundlr.upload(data, {
+    tags: [{ name: "Content-Type", value: file.type || "video/mp4" }],
+  });
+
+  console.log("Tx subida a Arweave:", tx.id);
+
+  // URL pública permanente
+  return `https://arweave.net/${tx.id}`;
+}
+
 
     // 📌 6) Cuando pulsan "Subir mi vídeo"
     boton.addEventListener("click", async () => {
@@ -198,7 +258,7 @@
 
       try {
         // 1️⃣ Subimos (de momento, mock). Luego será Arweave.
-        const videoUrl = await uploadVideoToArweaveMock(fichero);
+        const videoUrl = await uploadVideoToArweave(fichero);
         if (!videoUrl) {
           throw new Error("No se ha obtenido URL de vídeo");
         }
@@ -235,4 +295,5 @@
   </script>
 </body>
 </html>
+
 
