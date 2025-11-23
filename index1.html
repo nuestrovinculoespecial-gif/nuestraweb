@@ -41,9 +41,7 @@
       text-align: center;
       width: 100%;
       max-width: 500px;
-      /* IMPORTANTE: por defecto oculto;
-         sólo se mostrará si NO hay vídeo final */
-      display: none;
+      display: none; /* Por defecto oculto: se muestra sólo si no hay vídeo final */
     }
     #panel-subida h2 {
       margin-top: 0;
@@ -92,38 +90,30 @@
   <!-- PANEL CON EL BOTÓN (solo si NO hay vídeo final) -->
   <div id="panel-subida">
     <h2>Sube aquí vuestro vídeo de recuerdo</h2>
-    <p>Esta versión es de prueba: el botón todavía no sube nada de verdad.</p>
+    <p>En esta versión, la subida es de prueba: guardamos la URL en Supabase.</p>
     <input type="file" id="archivo" accept="video/*">
     <button id="botonSubir">🔼 Subir mi vídeo</button>
   </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-  const SUPABASE_URL = "https://zcmvxijifgdjqjjhwfcy.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjbXZ4aWppZmdkanFqamh3ZmN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4ODA4NjMsImV4cCI6MjA3OTQ1Njg2M30.tmNb1J-ukp1rIX3N512DA12ZMinpz7Mm4wlc4l9MwFY";
-
-  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-</script>
-
-Selecciona desde <script> hasta </script> y bórralo.
-Luego pega este código (ojo con cambiar la URL del backend):
-
-html
-Copiar código
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    // ⚙️ PON AQUÍ LA URL DE TU BACKEND EN RENDER
-    const API_BASE = "https://vinculo-backend.onrender.com";
+    // ⚙️ TUS DATOS DE SUPABASE (los que ya habías puesto)
+    const SUPABASE_URL = "https://zcmvxijifgdjqjjhwfcy.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjbXZ4aWppZmdkanFqamh3ZmN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4ODA4NjMsImV4cCI6MjA3OTQ1Njg2M30.tmNb1J-ukp1rIX3N512DA12ZMinpz7Mm4wlc4l9MwFY";
 
-    // 1) Leer el cardId de la URL
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // 📌 1) Leer el cardId de la URL (?card=XXXX)
     function obtenerCardId() {
       const params = new URLSearchParams(window.location.search);
       const card = params.get("card");
-      return card || "DEMO"; // si no hay card, usamos DEMO
+      return card || "DEMO";
     }
 
     const cardId = obtenerCardId();
 
-    // 2) Referencias
+    // 📌 2) Referencias a elementos del DOM
     const textoCard   = document.getElementById("texto-card");
     const player      = document.getElementById("player");
     const input       = document.getElementById("archivo");
@@ -133,44 +123,51 @@ Copiar código
 
     textoCard.textContent = "Esta tarjeta es: " + cardId;
 
-    // 3) Valores por defecto
-    const URL_INICIAL_DEFECTO = "https://nuestrovinculoespecial-gif.github.io/nuestraweb/comunionvideo.mp4";
-    let urlInicial    = URL_INICIAL_DEFECTO;
-    let urlVideoFinal = "";
+    // 📌 3) Vídeo inicial por defecto (DEMO)
+    const URL_INICIAL_DEFECTO =
+      "https://nuestrovinculoespecial-gif.github.io/nuestraweb/comunionvideo.mp4";
+
+    let urlInicial    = URL_INICIAL_DEFECTO; // en el futuro podrías hacerlo por comunión
+    let urlVideoFinal = ""; // si está relleno, se muestra este
 
     function mostrarVideoActual() {
       const url = urlVideoFinal || urlInicial;
       player.src = url;
     }
 
-    // 4) Cargar datos de la tarjeta desde el BACKEND REAL
+    // 📌 4) Consultar si esta card ya tiene vídeo en Supabase
     async function cargarDatosTarjeta() {
       try {
-        const resp = await fetch(API_BASE + "/card/" + encodeURIComponent(cardId));
-        if (!resp.ok) {
-          throw new Error("No se pudo cargar la tarjeta");
+        const { data, error } = await supabaseClient
+          .from("cards")
+          .select("video_url")
+          .eq("card_id", cardId)
+          .maybeSingle();
+
+        if (error) {
+          console.error("Error consultando Supabase:", error);
+          mensaje.textContent = "Problema al cargar la información de la tarjeta. Se muestra el vídeo inicial.";
+          urlInicial    = URL_INICIAL_DEFECTO;
+          urlVideoFinal = "";
+          panelSubida.style.display = "block";
+          mostrarVideoActual();
+          return;
         }
-        const datos = await resp.json();
 
-        urlInicial    = datos.initialVideoUrl || URL_INICIAL_DEFECTO;
-        urlVideoFinal = datos.finalVideoUrl || "";
-
-        if (urlVideoFinal) {
-          // YA HAY VÍDEO FINAL → ocultamos el panel de subida
+        if (data && data.video_url) {
+          // YA HAY VÍDEO FINAL
+          urlVideoFinal = data.video_url;
           panelSubida.style.display = "none";
           mensaje.textContent = "Esta tarjeta ya tiene un vídeo final guardado.";
         } else {
-          // NO HAY VÍDEO FINAL → mostramos el panel
+          // NO HAY VÍDEO FINAL
+          urlVideoFinal = "";
           panelSubida.style.display = "block";
-          if (datos.registered === false) {
-            mensaje.textContent = "Esta tarjeta aún no está registrada. Se muestra el vídeo inicial y se permite subir uno.";
-          } else {
-            mensaje.textContent = "Todavía no hay vídeo final. Podéis subir vuestro vídeo.";
-          }
+          mensaje.textContent = "Todavía no hay vídeo final. Podéis subir vuestro vídeo.";
         }
       } catch (e) {
         console.error(e);
-        mensaje.textContent = "Problema al cargar la información de la tarjeta. Se muestra el vídeo inicial.";
+        mensaje.textContent = "Problema al cargar la tarjeta. Se muestra el vídeo inicial.";
         urlInicial    = URL_INICIAL_DEFECTO;
         urlVideoFinal = "";
         panelSubida.style.display = "block";
@@ -181,7 +178,14 @@ Copiar código
 
     cargarDatosTarjeta();
 
-    // 5) Cuando pulsan "Subir mi vídeo", enviamos el archivo al backend
+    // 📌 5) Función de subida "falsa" (luego la cambiaremos por Bundlr/Arweave)
+    async function uploadVideoToArweaveMock(file) {
+      // De momento, sólo generamos una URL local para probar el flujo.
+      // Aquí luego conectaremos Bundlr + Arweave y devolveremos la URL real.
+      return URL.createObjectURL(file);
+    }
+
+    // 📌 6) Cuando pulsan "Subir mi vídeo"
     boton.addEventListener("click", async () => {
       const fichero = input.files[0];
       if (!fichero) {
@@ -193,31 +197,34 @@ Copiar código
       boton.disabled = true;
 
       try {
-        const formData = new FormData();
-        formData.append("video", fichero);
+        // 1️⃣ Subimos (de momento, mock). Luego será Arweave.
+        const videoUrl = await uploadVideoToArweaveMock(fichero);
+        if (!videoUrl) {
+          throw new Error("No se ha obtenido URL de vídeo");
+        }
 
-        const resp = await fetch(
-          API_BASE + "/card/" + encodeURIComponent(cardId) + "/upload",
-          {
-            method: "POST",
-            body: formData
+        // 2️⃣ Guardar la relación card_id → video_url en Supabase
+        const { error } = await supabaseClient
+          .from("cards")
+          .insert({ card_id: cardId, video_url: videoUrl });
+
+        if (error) {
+          console.error("Error guardando en Supabase:", error);
+          // Si la tarjeta ya existe (única), lo indicamos
+          if (error.code === "23505") {
+            mensaje.textContent = "Esta tarjeta ya tenía un vídeo asignado.";
+          } else {
+            mensaje.textContent = "Ha habido un problema al guardar el vídeo.";
           }
-        );
-
-        if (!resp.ok) {
-          throw new Error("Error al subir el vídeo");
+          return;
         }
 
-        const datos = await resp.json();
-        if (!datos.videoUrl) {
-          throw new Error("Respuesta sin videoUrl");
-        }
-
-        // Actualizamos el vídeo final y ocultamos el panel de subida
-        urlVideoFinal = datos.videoUrl;
+        // 3️⃣ Actualizamos la interfaz para mostrar ya el vídeo final
+        urlVideoFinal = videoUrl;
         mostrarVideoActual();
         panelSubida.style.display = "none";
-        mensaje.textContent = "¡Vídeo subido! Este será vuestro recuerdo permanente (en esta demo la URL es simulada).";
+        mensaje.textContent = "¡Vídeo subido! (En esta demo la URL no es Arweave todavía).";
+
       } catch (e) {
         console.error(e);
         mensaje.textContent = "Ha habido un problema al subir el vídeo. Inténtalo de nuevo.";
@@ -228,5 +235,4 @@ Copiar código
   </script>
 </body>
 </html>
-
 
