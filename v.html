@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Vínculo – Ver vídeo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      color: #fff;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 16px;
+      box-sizing: border-box;
+      text-align: center;
+    }
+    #loader {
+      font-size: 16px;
+      opacity: 0.8;
+    }
+    a {
+      color: #ff79c6;
+    }
+  </style>
+</head>
+<body>
+  <div id="loader">
+    Cargando vuestro vídeo especial...
+    <br>
+    <small>(Si tarda mucho, comprueba tu conexión)</small>
+  </div>
+  <div id="mensaje"></div>
+
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // ⚙️ TUS DATOS DE SUPABASE (los mismos que en index1.html)
+    const SUPABASE_URL = "https://zcmvxijifgdjqjjhwfcy.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjbXZ4aWppZmdkanFqamh3ZmN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4ODA4NjMsImV4cCI6MjA3OTQ1Njg2M30.tmNb1J-ukp1rIX3N512DA12ZMinpz7Mm4wlc4l9MwFY";
+
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const loader  = document.getElementById("loader");
+    const mensaje = document.getElementById("mensaje");
+
+    // 1) Leer el cardId de la URL (?card=0001-001)
+    function obtenerCardId() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("card");
+    }
+
+    const cardId = obtenerCardId();
+
+    if (!cardId) {
+      loader.textContent = "";
+      mensaje.innerHTML = "No se ha encontrado el identificador de la tarjeta.";
+    } else {
+      verVideoDeCard(cardId);
+    }
+
+    async function verVideoDeCard(cardId) {
+      try {
+        // 2) Buscar en Supabase la URL del vídeo para esta card
+        const { data, error } = await supabaseClient
+          .from("cards")
+          .select("video_url")
+          .eq("card_id", cardId)
+          .maybeSingle();
+
+        if (error) {
+          console.error(error);
+          loader.textContent = "";
+          mensaje.textContent = "Ha habido un problema al buscar vuestro vídeo.";
+          return;
+        }
+
+        if (data && data.video_url) {
+          // ✅ Hay vídeo final: redirigimos directamente
+          const url = data.video_url;
+          loader.textContent = "Encontrado. Abriendo vuestro vídeo...";
+          window.location.href = url;
+        } else {
+          // ❌ No hay vídeo final: mostrar mensaje y (opcional) enlace al DEMO o a la página de subida
+          loader.textContent = "";
+          mensaje.innerHTML = `
+            Todavía no hay un vídeo final asociado a esta moneda.<br>
+            Podéis grabarlo y subirlo desde aquí:<br>
+            <a href="index1.html?card=${encodeURIComponent(cardId)}">
+              Abrir página de Vínculo
+            </a>
+          `;
+        }
+      } catch (e) {
+        console.error(e);
+        loader.textContent = "";
+        mensaje.textContent = "Ha ocurrido un error inesperado al cargar el vídeo.";
+      }
+    }
+  </script>
+</body>
+</html>
