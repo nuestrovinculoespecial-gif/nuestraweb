@@ -21,7 +21,10 @@
     }
     #loader {
       font-size: 16px;
-      opacity: 0.8;
+      opacity: 0.9;
+      margin-bottom: 12px;
+    }
+    #mensaje {
       margin-bottom: 12px;
     }
     #debug {
@@ -49,17 +52,11 @@
   <div id="loader">Cargando vuestro vídeo especial...</div>
   <div id="mensaje"></div>
   <video id="videoPreview" controls style="display:none;"></video>
-  <div id="debug"></div>
+  <div id="debug">DEBUG vacío.</div>
 
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    // ⚙️ TUS DATOS DE SUPABASE
-    const SUPABASE_URL = "https://zcmvxijifgdjqjjhwfcy.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjbXZ4aWppZmdkanFqamh3ZmN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4ODA4NjMsImV4cCI6MjA3OTQ1Njg2M30.tmNb1J-ukp1rIX3N512DA12ZMinpz7Mm4wlc4l9MwFY";
-
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
     const loader   = document.getElementById("loader");
     const mensaje  = document.getElementById("mensaje");
     const debugBox = document.getElementById("debug");
@@ -69,21 +66,41 @@
       debugBox.textContent = JSON.stringify(obj, null, 2);
     }
 
+    // ⚙️ TUS DATOS DE SUPABASE
+    const SUPABASE_URL = "https://zcmvxijifgdjqjjhwfcy.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjbXZ4aWppZmdkanFqamh3ZmN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4ODA4NjMsImV4cCI6MjA3OTQ1Njg2M30.tmNb1J-ukp1rIX3N512DA12ZMinpz7Mm4wlc4l9MwFY";
+
+    let supabaseClient = null;
+
+    (function iniciar() {
+      try {
+        // 👇 ESTA ES LA FORMA CORRECTA CON EL CDN (v2)
+        const { createClient } = supabase;
+        supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        logDebug({ paso: "supabase_init_ok" });
+      } catch (e) {
+        loader.textContent = "Error iniciando Supabase.";
+        mensaje.textContent = "Revisa el script de Supabase.";
+        logDebug({ paso: "supabase_init_error", error: e.message || String(e) });
+        return;
+      }
+
+      const cardId = obtenerCardId();
+      if (!cardId) {
+        loader.textContent = "";
+        mensaje.textContent = "No se ha encontrado el identificador de la tarjeta (?card=...).";
+        logDebug({ paso: "sin_cardId" });
+        return;
+      }
+
+      loader.textContent = "Buscando el vídeo para la tarjeta: " + cardId + " ...";
+      verVideoDeCard(cardId);
+    })();
+
     // 1) Leer el cardId de la URL (?card=0001-001)
     function obtenerCardId() {
       const params = new URLSearchParams(window.location.search);
       return params.get("card");
-    }
-
-    const cardId = obtenerCardId();
-
-    if (!cardId) {
-      loader.textContent = "";
-      mensaje.textContent = "No se ha encontrado el identificador de la tarjeta (?card=...).";
-      logDebug({ error: "Sin cardId en la URL" });
-    } else {
-      loader.textContent = "Buscando el vídeo para la tarjeta: " + cardId + " ...";
-      verVideoDeCard(cardId);
     }
 
     async function verVideoDeCard(cardId) {
@@ -94,7 +111,7 @@
           .eq("card_id", cardId)
           .maybeSingle();
 
-        logDebug({ cardId, data, error });
+        logDebug({ paso: "consulta_supabase", cardId, data, error });
 
         if (error) {
           loader.textContent = "";
@@ -103,18 +120,18 @@
         }
 
         if (data && data.video_url) {
-          // ✅ Hay vídeo final: en lugar de redirigir directamente, primero lo mostramos aquí
+          // ✅ Hay vídeo final
           const url = data.video_url;
           loader.textContent = "Vídeo encontrado. Mostrando vista previa...";
           mensaje.innerHTML = `URL del vídeo:<br><a href="${url}" target="_blank">${url}</a>`;
 
-          // Intentamos reproducirlo directamente
           videoEl.src = url;
           videoEl.style.display = "block";
 
-          // Si luego quieres redirigir automáticamente, puedes descomentar esto:
+          // Si luego quieres redirigir directamente, se podría hacer:
           // setTimeout(() => { window.location.href = url; }, 1500);
         } else {
+          // ❌ No hay vídeo final
           loader.textContent = "";
           mensaje.innerHTML = `
             Todavía no hay un vídeo final asociado a esta moneda.<br>
@@ -125,13 +142,11 @@
           `;
         }
       } catch (e) {
-        console.error(e);
         loader.textContent = "";
         mensaje.textContent = "Ha ocurrido un error inesperado al cargar el vídeo.";
-        logDebug({ exception: e.message || String(e) });
+        logDebug({ paso: "exception", error: e.message || String(e) });
       }
     }
   </script>
 </body>
 </html>
-
