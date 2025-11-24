@@ -198,13 +198,12 @@
   await provider._ready();
 
   // Buscar la clase WebBundlr expuesta por el bundle UMD
-  const WebBundlrClass =
-    window.WebBundlr || (window.Bundlr && window.Bundlr.WebBundlr);
+ const WebBundlrClass = window.Bundlr.default;
+if (!WebBundlrClass) {
+  console.error("Bundlr no ha cargado correctamente.");
+  throw new Error("No se pudo cargar Bundlr desde el navegador.");
+}
 
-  if (!WebBundlrClass) {
-    console.error("No encuentro WebBundlr en la librería Bundlr.");
-    throw new Error("Problema cargando Bundlr en el navegador.");
-  }
 
   // Conectamos con el nodo principal de Bundlr (mainnet)
   const bundlr = new WebBundlrClass(
@@ -299,6 +298,7 @@
   </script>
 </body>
 </html>
+
 
 
 
