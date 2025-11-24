@@ -265,8 +265,12 @@
 
         // 2️⃣ Guardar la relación card_id → video_url en Supabase
         const { error } = await supabaseClient
-          .from("cards")
-          .insert({ card_id: cardId, video_url: videoUrl });
+        .from("cards")
+        .upsert(
+          { card_id: cardId, video_url: videoUrl },
+          { onConflict: "card_id" } // usa card_id para decidir qué fila actualizar
+        );
+
 
         if (error) {
           console.error("Error guardando en Supabase:", error);
@@ -283,7 +287,7 @@
         urlVideoFinal = videoUrl;
         mostrarVideoActual();
         panelSubida.style.display = "none";
-        mensaje.textContent = "¡Vídeo subido! (En esta demo la URL no es Arweave todavía).";
+        mensaje.textContent = "¡Vídeo subido! El enlace está guardado de forma permanente.";
 
       } catch (e) {
         console.error(e);
@@ -295,5 +299,6 @@
   </script>
 </body>
 </html>
+
 
 
