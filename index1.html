@@ -98,200 +98,112 @@
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
-  <script>
-    // ⚙️ TUS DATOS DE SUPABASE (los que ya habías puesto)
-    const SUPABASE_URL = "https://zcmvxijifgdjqjjhwfcy.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpjbXZ4aWppZmdkanFqamh3ZmN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM4ODA4NjMsImV4cCI6MjA3OTQ1Njg2M30.tmNb1J-ukp1rIX3N512DA12ZMinpz7Mm4wlc4l9MwFY";
+<script>
+  // ⚙️ URL de tu backend en Render (cuando lo tengas desplegado)
+  const API_BASE = "https://TU-BACKEND.onrender.com";
 
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    // 📌 1) Leer el cardId de la URL (?card=XXXX)
-    function obtenerCardId() {
-      const params = new URLSearchParams(window.location.search);
-      const card = params.get("card");
-      return card || "DEMO";
-    }
-
-    const cardId = obtenerCardId();
-
-    // 📌 2) Referencias a elementos del DOM
-    const textoCard   = document.getElementById("texto-card");
-    const player      = document.getElementById("player");
-    const input       = document.getElementById("archivo");
-    const boton       = document.getElementById("botonSubir");
-    const mensaje     = document.getElementById("mensaje");
-    const panelSubida = document.getElementById("panel-subida");
-
-    textoCard.textContent = "Esta tarjeta es: " + cardId;
-
-    // 📌 3) Vídeo inicial por defecto (DEMO)
-    const URL_INICIAL_DEFECTO =
-      "https://nuestrovinculoespecial-gif.github.io/nuestraweb/comunionvideo.mp4";
-
-    let urlInicial    = URL_INICIAL_DEFECTO; // en el futuro podrías hacerlo por comunión
-    let urlVideoFinal = ""; // si está relleno, se muestra este
-
-    function mostrarVideoActual() {
-      const url = urlVideoFinal || urlInicial;
-      player.src = url;
-    }
-
-    // 📌 4) Consultar si esta card ya tiene vídeo en Supabase
-    async function cargarDatosTarjeta() {
-      try {
-        const { data, error } = await supabaseClient
-          .from("cards")
-          .select("video_url")
-          .eq("card_id", cardId)
-          .maybeSingle();
-
-        if (error) {
-          console.error("Error consultando Supabase:", error);
-          mensaje.textContent = "Problema al cargar la información de la tarjeta. Se muestra el vídeo inicial.";
-          urlInicial    = URL_INICIAL_DEFECTO;
-          urlVideoFinal = "";
-          panelSubida.style.display = "block";
-          mostrarVideoActual();
-          return;
-        }
-
-        if (data && data.video_url) {
-          // YA HAY VÍDEO FINAL
-          urlVideoFinal = data.video_url;
-          panelSubida.style.display = "none";
-          mensaje.textContent = "Esta tarjeta ya tiene un vídeo final guardado.";
-        } else {
-          // NO HAY VÍDEO FINAL
-          urlVideoFinal = "";
-          panelSubida.style.display = "block";
-          mensaje.textContent = "Todavía no hay vídeo final. Podéis subir vuestro vídeo.";
-        }
-      } catch (e) {
-        console.error(e);
-        mensaje.textContent = "Problema al cargar la tarjeta. Se muestra el vídeo inicial.";
-        urlInicial    = URL_INICIAL_DEFECTO;
-        urlVideoFinal = "";
-        panelSubida.style.display = "block";
-      } finally {
-        mostrarVideoActual();
-      }
-    }
-
-    cargarDatosTarjeta();
-
-  async function uploadVideoToArweave(file) {
-  if (!window.ethereum) {
-    throw new Error("Necesitas MetaMask instalado para subir el vídeo.");
+  // 1) Leer cardId de la URL
+  function obtenerCardId() {
+    const params = new URLSearchParams(window.location.search);
+    const card = params.get("card");
+    return card || "DEMO";
   }
 
-  // Pedimos conexión a MetaMask
-  await window.ethereum.request({ method: "eth_requestAccounts" });
+  const cardId = obtenerCardId();
 
-  // Provider de ethers a partir de MetaMask
-  const provider = new ethers.providers.Web3Provider(window.ethereum);
-  await provider._ready();
+  // 2) Referencias DOM
+  const textoCard   = document.getElementById("texto-card");
+  const player      = document.getElementById("player");
+  const input       = document.getElementById("archivo");
+  const boton       = document.getElementById("botonSubir");
+  const mensaje     = document.getElementById("mensaje");
+  const panelSubida = document.getElementById("panel-subida");
 
-  // Buscar la clase WebBundlr expuesta por el bundle UMD
- const WebBundlrClass = window.Bundlr.default;
-if (!WebBundlrClass) {
-  console.error("Bundlr no ha cargado correctamente.");
-  throw new Error("No se pudo cargar Bundlr desde el navegador.");
-}
+  textoCard.textContent = "Esta tarjeta es: " + cardId;
 
+  // 3) Vídeo inicial por defecto (DEMO)
+  const URL_INICIAL_DEFECTO =
+    "https://nuestrovinculoespecial-gif.github.io/nuestraweb/comunionvideo.mp4";
 
-  // Conectamos con el nodo principal de Bundlr (mainnet)
-  const bundlr = new WebBundlrClass(
-    "https://node1.bundlr.network",
-    "matic",  // usamos MATIC/POL de Polygon
-    provider
-  );
+  let urlInicial    = URL_INICIAL_DEFECTO;
+  let urlVideoFinal = "";
 
-  await bundlr.ready();
-
-  // Pasamos el archivo a bytes
-  const data = new Uint8Array(await file.arrayBuffer());
-
-  // Precio de subir este archivo
-  const price = await bundlr.getPrice(data.length);
-  console.log("Precio aproximado (en base units):", price.toString());
-
-  // Balance ya cargado en Bundlr
-  const balance = await bundlr.getLoadedBalance();
-
-  // Si falta saldo, financiamos la diferencia
-  if (balance.lt(price)) {
-    const diff = price.minus(balance);
-    console.log("Financiando Bundlr con:", diff.toString());
-    await bundlr.fund(diff);
+  function mostrarVideoActual() {
+    const url = urlVideoFinal || urlInicial;
+    player.src = url;
   }
 
-  // Subimos a Arweave
-  console.log("Subiendo a Arweave...");
-  const tx = await bundlr.upload(data, {
-    tags: [{ name: "Content-Type", value: file.type || "video/mp4" }],
-  });
+  // 4) Cargar datos de la tarjeta desde el BACKEND
+  async function cargarDatosTarjeta() {
+    try {
+      const resp = await fetch(`${API_BASE}/card/${encodeURIComponent(cardId)}`);
+      if (!resp.ok) throw new Error("No se pudo cargar la tarjeta");
+      const datos = await resp.json();
 
-  console.log("Tx subida a Arweave:", tx.id);
+      urlInicial    = datos.initialVideoUrl || URL_INICIAL_DEFECTO;
+      urlVideoFinal = datos.finalVideoUrl || "";
 
-  // URL pública permanente
-  return `https://arweave.net/${tx.id}`;
-}
-
-
-    // 📌 6) Cuando pulsan "Subir mi vídeo"
-    boton.addEventListener("click", async () => {
-      const fichero = input.files[0];
-      if (!fichero) {
-        mensaje.textContent = "Primero elige un vídeo de tu móvil.";
-        return;
-      }
-
-      mensaje.textContent = "Subiendo el vídeo... puede tardar un poco.";
-      boton.disabled = true;
-
-      try {
-        // 1️⃣ Subimos (de momento, mock). Luego será Arweave.
-        const videoUrl = await uploadVideoToArweave(fichero);
-        if (!videoUrl) {
-          throw new Error("No se ha obtenido URL de vídeo");
-        }
-
-        // 2️⃣ Guardar la relación card_id → video_url en Supabase
-        const { error } = await supabaseClient
-        .from("cards")
-        .upsert(
-          { card_id: cardId, video_url: videoUrl },
-          { onConflict: "card_id" } // usa card_id para decidir qué fila actualizar
-        );
-
-
-        if (error) {
-          console.error("Error guardando en Supabase:", error);
-          // Si la tarjeta ya existe (única), lo indicamos
-          if (error.code === "23505") {
-            mensaje.textContent = "Esta tarjeta ya tenía un vídeo asignado.";
-          } else {
-            mensaje.textContent = "Ha habido un problema al guardar el vídeo.";
-          }
-          return;
-        }
-
-        // 3️⃣ Actualizamos la interfaz para mostrar ya el vídeo final
-        urlVideoFinal = videoUrl;
-        mostrarVideoActual();
+      if (urlVideoFinal) {
         panelSubida.style.display = "none";
-        mensaje.textContent = "¡Vídeo subido! El enlace está guardado de forma permanente.";
-
-      } catch (e) {
-        console.error(e);
-        mensaje.textContent = "Ha habido un problema al subir el vídeo. Inténtalo de nuevo.";
-      } finally {
-        boton.disabled = false;
+        mensaje.textContent = "Esta tarjeta ya tiene un vídeo final guardado.";
+      } else {
+        panelSubida.style.display = "block";
+        mensaje.textContent = "Todavía no hay vídeo final. Podéis subir vuestro vídeo.";
       }
-    });
-  </script>
+    } catch (e) {
+      console.error(e);
+      mensaje.textContent = "Problema al cargar la tarjeta. Se muestra el vídeo inicial.";
+      urlInicial = URL_INICIAL_DEFECTO;
+      urlVideoFinal = "";
+      panelSubida.style.display = "block";
+    } finally {
+      mostrarVideoActual();
+    }
+  }
+
+  cargarDatosTarjeta();
+
+  // 5) Cuando pulsan "Subir mi vídeo"
+  boton.addEventListener("click", async () => {
+    const fichero = input.files[0];
+    if (!fichero) {
+      mensaje.textContent = "Primero elige un vídeo de tu móvil.";
+      return;
+    }
+
+    mensaje.textContent = "Subiendo el vídeo... puede tardar un poco.";
+    boton.disabled = true;
+
+    try {
+      const formData = new FormData();
+      formData.append("video", fichero);
+
+      const resp = await fetch(
+        `${API_BASE}/card/${encodeURIComponent(cardId)}/upload`,
+        { method: "POST", body: formData }
+      );
+
+      if (!resp.ok) throw new Error("Error al subir el vídeo");
+
+      const datos = await resp.json();
+      if (!datos.videoUrl) throw new Error("Respuesta sin videoUrl");
+
+      urlVideoFinal = datos.videoUrl;
+      mostrarVideoActual();
+      panelSubida.style.display = "none";
+      mensaje.textContent = "¡Vídeo subido! Este será vuestro recuerdo permanente.";
+    } catch (e) {
+      console.error(e);
+      mensaje.textContent = "Ha habido un problema al subir el vídeo. Inténtalo de nuevo.";
+    } finally {
+      boton.disabled = false;
+    }
+  });
+</script>
+
 </body>
 </html>
+
 
 
 
