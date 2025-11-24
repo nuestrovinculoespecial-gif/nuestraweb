@@ -98,111 +98,117 @@
   <!-- Supabase JS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   
-<script>
-  // ⚙️ URL de tu backend en Render (cuando lo tengas desplegado)
-  const API_BASE = "https://TU-BACKEND.onrender.com";
+  <!-- Solo Supabase si la usas en otras partes; para este flujo ya no hace falta -->
+  <script>
+    // ⚙️ PON AQUÍ LA URL QUE TE HA DADO RENDER
+    const API_BASE = "https://TU-URL-RENDER.onrender.com";
 
-  // 1) Leer cardId de la URL
-  function obtenerCardId() {
-    const params = new URLSearchParams(window.location.search);
-    const card = params.get("card");
-    return card || "DEMO";
-  }
+    // 1) Leer cardId de la URL
+    function obtenerCardId() {
+      const params = new URLSearchParams(window.location.search);
+      const card = params.get("card");
+      return card || "DEMO";
+    }
 
-  const cardId = obtenerCardId();
+    const cardId = obtenerCardId();
 
-  // 2) Referencias DOM
-  const textoCard   = document.getElementById("texto-card");
-  const player      = document.getElementById("player");
-  const input       = document.getElementById("archivo");
-  const boton       = document.getElementById("botonSubir");
-  const mensaje     = document.getElementById("mensaje");
-  const panelSubida = document.getElementById("panel-subida");
+    // 2) Referencias DOM
+    const textoCard   = document.getElementById("texto-card");
+    const player      = document.getElementById("player");
+    const input       = document.getElementById("archivo");
+    const boton       = document.getElementById("botonSubir");
+    const mensaje     = document.getElementById("mensaje");
+    const panelSubida = document.getElementById("panel-subida");
 
-  textoCard.textContent = "Esta tarjeta es: " + cardId;
+    textoCard.textContent = "Esta tarjeta es: " + cardId;
 
-  // 3) Vídeo inicial por defecto (DEMO)
-  const URL_INICIAL_DEFECTO =
-    "https://nuestrovinculoespecial-gif.github.io/nuestraweb/comunionvideo.mp4";
+    // 3) Vídeo inicial por defecto (por si el backend falla)
+    const URL_INICIAL_DEFECTO =
+      "https://nuestrovinculoespecial-gif.github.io/nuestraweb/comunionvideo.mp4";
 
-  let urlInicial    = URL_INICIAL_DEFECTO;
-  let urlVideoFinal = "";
+    let urlInicial    = URL_INICIAL_DEFECTO;
+    let urlVideoFinal = "";
 
-  function mostrarVideoActual() {
-    const url = urlVideoFinal || urlInicial;
-    player.src = url;
-  }
+    function mostrarVideoActual() {
+      const url = urlVideoFinal || urlInicial;
+      player.src = url;
+    }
 
-  // 4) Cargar datos de la tarjeta desde el BACKEND
-  async function cargarDatosTarjeta() {
-    try {
-      const resp = await fetch(`${API_BASE}/card/${encodeURIComponent(cardId)}`);
-      if (!resp.ok) throw new Error("No se pudo cargar la tarjeta");
-      const datos = await resp.json();
+    // 4) Cargar datos de la tarjeta desde tu BACKEND
+    async function cargarDatosTarjeta() {
+      try {
+        const resp = await fetch(`${API_BASE}/card/${encodeURIComponent(cardId)}`);
+        if (!resp.ok) throw new Error("No se pudo cargar la tarjeta");
+        const datos = await resp.json();
 
-      urlInicial    = datos.initialVideoUrl || URL_INICIAL_DEFECTO;
-      urlVideoFinal = datos.finalVideoUrl || "";
+        urlInicial    = datos.initialVideoUrl || URL_INICIAL_DEFECTO;
+        urlVideoFinal = datos.finalVideoUrl || "";
 
-      if (urlVideoFinal) {
-        panelSubida.style.display = "none";
-        mensaje.textContent = "Esta tarjeta ya tiene un vídeo final guardado.";
-      } else {
+        if (urlVideoFinal) {
+          panelSubida.style.display = "none";
+          mensaje.textContent = "Esta tarjeta ya tiene un vídeo final guardado.";
+        } else {
+          panelSubida.style.display = "block";
+          mensaje.textContent = "Todavía no hay vídeo final. Podéis subir vuestro vídeo.";
+        }
+      } catch (e) {
+        console.error(e);
+        mensaje.textContent = "Problema al cargar la tarjeta. Se muestra el vídeo inicial.";
+        urlInicial    = URL_INICIAL_DEFECTO;
+        urlVideoFinal = "";
         panelSubida.style.display = "block";
-        mensaje.textContent = "Todavía no hay vídeo final. Podéis subir vuestro vídeo.";
+      } finally {
+        mostrarVideoActual();
       }
-    } catch (e) {
-      console.error(e);
-      mensaje.textContent = "Problema al cargar la tarjeta. Se muestra el vídeo inicial.";
-      urlInicial = URL_INICIAL_DEFECTO;
-      urlVideoFinal = "";
-      panelSubida.style.display = "block";
-    } finally {
-      mostrarVideoActual();
-    }
-  }
-
-  cargarDatosTarjeta();
-
-  // 5) Cuando pulsan "Subir mi vídeo"
-  boton.addEventListener("click", async () => {
-    const fichero = input.files[0];
-    if (!fichero) {
-      mensaje.textContent = "Primero elige un vídeo de tu móvil.";
-      return;
     }
 
-    mensaje.textContent = "Subiendo el vídeo... puede tardar un poco.";
-    boton.disabled = true;
+    cargarDatosTarjeta();
 
-    try {
-      const formData = new FormData();
-      formData.append("video", fichero);
+    // 5) Cuando pulsan "Subir mi vídeo", se lo mandamos a tu backend
+    boton.addEventListener("click", async () => {
+      const fichero = input.files[0];
+      if (!fichero) {
+        mensaje.textContent = "Primero elige un vídeo de tu móvil.";
+        return;
+      }
 
-      const resp = await fetch(
-        `${API_BASE}/card/${encodeURIComponent(cardId)}/upload`,
-        { method: "POST", body: formData }
-      );
+      mensaje.textContent = "Subiendo el vídeo... puede tardar un poco.";
+      boton.disabled = true;
 
-      if (!resp.ok) throw new Error("Error al subir el vídeo");
+      try {
+        const formData = new FormData();
+        formData.append("video", fichero);
 
-      const datos = await resp.json();
-      if (!datos.videoUrl) throw new Error("Respuesta sin videoUrl");
+        const resp = await fetch(
+          `${API_BASE}/card/${encodeURIComponent(cardId)}/upload`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
 
-      urlVideoFinal = datos.videoUrl;
-      mostrarVideoActual();
-      panelSubida.style.display = "none";
-      mensaje.textContent = "¡Vídeo subido! Este será vuestro recuerdo permanente.";
-    } catch (e) {
-      console.error(e);
-      mensaje.textContent = "Ha habido un problema al subir el vídeo. Inténtalo de nuevo.";
-    } finally {
-      boton.disabled = false;
-    }
-  });
-</script>
+        if (!resp.ok) throw new Error("Error al subir el vídeo");
+
+        const datos = await resp.json();
+        if (!datos.videoUrl) throw new Error("Respuesta sin videoUrl");
+
+        urlVideoFinal = datos.videoUrl;
+        mostrarVideoActual();
+        panelSubida.style.display = "none";
+        mensaje.textContent = "¡Vídeo subido! Este será vuestro recuerdo permanente.";
+      } catch (e) {
+        console.error(e);
+        mensaje.textContent = "Ha habido un problema al subir el vídeo. Inténtalo de nuevo.";
+      } finally {
+        boton.disabled = false;
+      }
+    });
+  </script>
+
 
 </body>
 </html>
+
 
 
 
