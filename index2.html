@@ -96,15 +96,15 @@
   </div>
 
   <!-- No necesitamos Supabase JS aquí, todo va por tu backend -->
- <script>
-  // ⚙️ URL de tu backend en Render (cópiala tal cual desde Render)
+<script>
+  // ⚙️ URL de tu backend en Render (tal cual)
   const API_BASE = "https://vinculo-supabase-backend.onrender.com";
 
   // 1) Leer cardId de la URL (?card=XXXX)
   function obtenerCardId() {
     const params = new URLSearchParams(window.location.search);
     const card = params.get("card");
-    return card || "25111939"; // por si abres sin parámetro, usa esta de prueba
+    return card || "25111939"; // de prueba
   }
 
   const cardId = obtenerCardId();
@@ -117,35 +117,47 @@
   const mensaje     = document.getElementById("mensaje");
   const panelSubida = document.getElementById("panel-subida");
 
+  // 🔍 pequeño debug: dónde mostramos la URL que se está usando
+  const debugDiv = document.createElement("div");
+  debugDiv.id = "debug-url";
+  debugDiv.style.marginTop = "8px";
+  debugDiv.style.fontSize = "11px";
+  debugDiv.style.opacity = "0.7";
+  document.getElementById("panel-info").appendChild(debugDiv);
+
   textoCard.textContent = "Esta tarjeta es: " + cardId;
 
-  // 3) Vídeo inicial por defecto (solo si TODO falla)
-  const URL_INICIAL_DEFECTO =
-    "https://nuestrovinculoespecial-gif.github.io/nuestraweb/comunionvideo.mp4";
-
-  let urlInicial    = URL_INICIAL_DEFECTO;
+  let urlInicial    = "";
   let urlVideoFinal = "";
 
   function mostrarVideoActual() {
     const url = urlVideoFinal || urlInicial;
     console.log("🎬 Reproduciendo URL:", url);
     player.src = url;
+    debugDiv.textContent = "URL del vídeo que se está usando: " + url;
   }
 
   // 4) Cargar datos de la tarjeta desde tu BACKEND
   async function cargarDatosTarjeta() {
     try {
-      console.log("🔎 Pidiendo datos a:", `${API_BASE}/cards/${encodeURIComponent(cardId)}`);
+      const urlGet = `${API_BASE}/cards/${encodeURIComponent(cardId)}`;
+      console.log("🔎 Pidiendo datos a:", urlGet);
 
-      const resp = await fetch(`${API_BASE}/cards/${encodeURIComponent(cardId)}`);
+      const resp = await fetch(urlGet);
       if (!resp.ok) throw new Error("No se pudo cargar la tarjeta");
 
       const datos = await resp.json();
       console.log("📦 Datos recibidos del backend:", datos);
 
-      // Aquí usamos EXACTAMENTE lo que te devuelve el backend
-      urlInicial    = datos.initialVideoUrl || URL_INICIAL_DEFECTO;
+      // ❗ Aquí ya NO usamos vídeo por defecto
+      urlInicial    = datos.initialVideoUrl || "";
       urlVideoFinal = datos.finalVideoUrl || "";
+
+      if (!urlInicial && !urlVideoFinal) {
+        mensaje.textContent = "No hay ningún vídeo configurado para esta tarjeta.";
+        console.warn("No se ha recibido initialVideoUrl ni finalVideoUrl");
+        return;
+      }
 
       if (datos.hasFinalVideo && urlVideoFinal) {
         panelSubida.style.display = "none";
@@ -156,10 +168,8 @@
       }
     } catch (e) {
       console.error("❌ Error cargando la tarjeta:", e);
-      mensaje.textContent = "Problema al cargar la tarjeta. Se muestra el vídeo inicial por defecto.";
-      urlInicial    = URL_INICIAL_DEFECTO;
-      urlVideoFinal = "";
-      panelSubida.style.display = "block";
+      mensaje.textContent = "Problema al cargar la tarjeta.";
+      return;
     } finally {
       mostrarVideoActual();
     }
@@ -180,8 +190,7 @@
 
     try {
       const formData = new FormData();
-      // IMPORTANTE: "file" debe coincidir con upload.single("file") en el backend
-      formData.append("file", fichero);
+      formData.append("file", fichero); // mismo nombre que en upload.single("file")
 
       const urlPost = `${API_BASE}/cards/${encodeURIComponent(cardId)}/final-video`;
       console.log("⬆️ Subiendo vídeo a:", urlPost);
