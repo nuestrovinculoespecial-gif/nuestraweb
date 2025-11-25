@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Tu Vínculo</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 2rem; }
+    video { max-width: 100%; margin-top: 1.5rem; }
+  </style>
+</head>
+<body>
+  <h1>Tu vídeo Vínculo</h1>
+  <p id="status">Cargando...</p>
+  <video id="video" controls></video>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const cardId = params.get('card');
+
+    const statusEl = document.getElementById('status');
+    const videoEl = document.getElementById('video');
+
+    if (!cardId) {
+      statusEl.textContent = 'Falta el identificador de la tarjeta.';
+    } else {
+      fetch(`https://vinculo-supabase-backend.onrender.com/card/${cardId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (!data.finalVideoUrl) {
+            statusEl.textContent = 'Todavía no hay vídeo asociado a esta tarjeta.';
+            return;
+          }
+          statusEl.textContent = '';
+          videoEl.src = data.finalVideoUrl;
+        })
+        .catch(err => {
+          console.error(err);
+          statusEl.textContent = 'Ha ocurrido un error cargando el vídeo.';
+        });
+    }
+  </script>
+</body>
+</html>
