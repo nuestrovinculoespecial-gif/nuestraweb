@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Vínculo · Subir vídeo</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;margin:24px;max-width:720px}
+    .card{padding:16px;border:1px solid #ddd;border-radius:12px;margin:12px 0}
+    button{padding:10px 14px;border-radius:10px;border:1px solid #bbb;background:#fff;cursor:pointer}
+    button.primary{border-color:#000}
+    video{width:100%;border-radius:12px;background:#000}
+    .muted{color:#666;font-size:14px}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    progress{width:100%}
+    input[type="text"]{padding:10px;border-radius:10px;border:1px solid #bbb;width:100%}
+  </style>
+</head>
+<body>
+  <h1>Vínculo</h1>
+  <p class="muted">Sube tu vídeo para actualizar el recuerdo de esta tarjeta.</p>
+
+  <div class="card">
+    <h3>1) Identificación</h3>
+    <p class="muted">
+      Card (QR): <b id="cardId">—</b><br/>
+      NFC: <b id="nfcId">—</b>
+    </p>
+
+    <div class="row">
+      <button id="btnNfc" class="primary">Leer NFC (opcional)</button>
+      <button id="btnSkipNfc">Continuar sin NFC</button>
+    </div>
+
+    <div id="nfcFallback" style="display:none;margin-top:10px">
+      <p class="muted">Si tu móvil no soporta NFC web, puedes pegar aquí el código NFC (si lo tienes):</p>
+      <input id="manualNfc" type="text" placeholder="Ej: NFC-UID-XXXX" />
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>2) Graba o elige un vídeo</h3>
+    <div class="row">
+      <button id="btnStart" class="primary">Empezar grabación</button>
+      <button id="btnStop" disabled>Parar</button>
+      <button id="btnPick">Elegir vídeo</button>
+      <input id="filePick" type="file" accept="video/*" capture="environment" style="display:none" />
+    </div>
+
+    <div style="margin-top:12px">
+      <video id="preview" controls playsinline></video>
+      <p class="muted" id="info"></p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>3) Subir y actualizar</h3>
+    <p class="muted">Al subir, el vídeo sobrescribirá el archivo asociado a esta tarjeta en Google Drive.</p>
+    <div class="row">
+      <button id="btnUpload" class="primary" disabled>Subir vídeo</button>
+    </div>
+    <div style="margin-top:10px">
+      <progress id="prog" value="0" max="100" style="display:none"></progress>
+      <p class="muted" id="status"></p>
+    </div>
+  </div>
+
+<script>
+  // ===== CONFIG =====
+  // Pega aquí tu URL de Apps Script (deploy como Web App)
+  const APPS_SCRIPT_URL = "PEGA_AQUI_TU_WEBAPP_URL";
+
+  // ===== state =====
+  const qs = new URLSearchParams(location.search);
+  const card = qs.get("card") || "";
+  const cardEl = document.getElementById("cardId");
+  const nfcEl = document.getElementById("nfcId");
+  const statusEl = document.getElementById("status");
+  const infoEl = document.getElementById("info");
+  const prog = document.getElementById("prog");
+  const preview = document.getElementById("preview");
+
+  let nfcId = "";
+  let videoBlob = null;
+  let recorder = null;
+  let chunks = [];
+  let stream = null;
+
+  cardEl.textContent = card || "(sin card en URL)";
+
+  // ===== NFC (Web NFC - Chrome Android) =====
+  const btnNfc = document.getElementById("btnNfc");
+  const btnSkipNfc = document.getElementById("btnSkipNfc");
+  const nfcFallback = document.getElementById("nfcFallback");
+  const manualNfc = document.getElementById("manualNfc");
+
+  btnNfc.addEventListener("click", async () => {
+    statusEl.textContent = "";
+    try {
+      if (!("NDEFReader" in window)) {
+        nfcFallback.style.display = "block";
+        statusEl.textContent = "Este navegador no soporta Web NFC. Puedes continuar sin NFC.";
+        return;
+      }
+      const reader = new NDEFReader();
+      await reader.scan();
+      statusEl.textContent = "Acerca la tarjeta…";
+      reader.onreading = (event) => {
+        // Lo más habitual es guardar un texto (NDEF) con un ID.
+        // Si tu tarjeta es sólo UID, Web NFC NO siempre expone UID por seguridad.
+        // Por eso, lo recomendable es que la tarjeta tenga un registro NDEF con un texto "NFC:XXXX".
+        const records = event.message.records || [];
+        for (const r of records) {
+          if (r.recordType === "text") {
+            const textDecoder = new TextDecoder(r.encoding || "utf-8");
+            // r.data es un DataView; lo convertimos:
+            const data = new Uint8Array(r.data.buffer);
+            const text = textDecoder.decode(data);
+            nfcId = text.trim();
+            nfcEl.textContent = nfcId;
+            statusEl.textContent = "NFC leído correctamente.";
+            return;
+          }
+        }
+        statusEl.textContent = "NFC detectado, pero no se encontró texto NDEF. (Recomendado: grabar texto NDEF con un ID).";
+      };
+    } catch (e) {
+      nfcFallback.style.display = "block";
+      statusEl.textContent = "No se pudo leer NFC (permiso/cancelado). Puedes continuar sin NFC.";
+    }
+  });
+
+  btnSkipNfc.addEventListener("click", () => {
+    nfcFallback.style.display = "block";
+    statusEl.textContent = "Continuando sin NFC.";
+  });
+
+  manualNfc.addEventListener("input", () => {
+    nfcId = manualNfc.value.trim();
+    nfcEl.textContent = nfcId || "—";
+  });
+
+  // ===== Video capture =====
+  const btnStart = document.getElementById("btnStart");
+  const btnStop = document.getElementById("btnStop");
+  const btnPick = document.getElementById("btnPick");
+  const filePick = document.getElementById("filePick");
+  const btnUpload = document.getElementById("btnUpload");
+
+  btnStart.addEventListener("click", async () => {
+    statusEl.textContent = "";
+    chunks = [];
+    videoBlob = null;
+    preview.removeAttribute("src");
+    preview.load();
+
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+      recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+      recorder.onstop = () => {
+        videoBlob = new Blob(chunks, { type: "video/webm" });
+        preview.src = URL.createObjectURL(videoBlob);
+        infoEl.textContent = `Vídeo listo: ${(videoBlob.size/1024/1024).toFixed(2)} MB`;
+        btnUpload.disabled = !videoBlob || !card;
+        stopStream();
+      };
+      recorder.start();
+      btnStart.disabled = true;
+      btnStop.disabled = false;
+      statusEl.textContent = "Grabando…";
+    } catch (e) {
+      statusEl.textContent = "No se pudo acceder a la cámara/micrófono.";
+    }
+  });
+
+  btnStop.addEventListener("click", () => {
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
+      btnStart.disabled = false;
+      btnStop.disabled = true;
+      statusEl.textContent = "Procesando vídeo…";
+    }
+  });
+
+  btnPick.addEventListener("click", () => filePick.click());
+
+  filePick.addEventListener("change", () => {
+    const f = filePick.files?.[0];
+    if (!f) return;
+    videoBlob = f;
+    preview.src = URL.createObjectURL(videoBlob);
+    infoEl.textContent = `Vídeo seleccionado: ${(videoBlob.size/1024/1024).toFixed(2)} MB`;
+    btnUpload.disabled = !videoBlob || !card;
+  });
+
+  function stopStream() {
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+    }
+  }
+
+  // ===== Upload =====
+  btnUpload.addEventListener("click", async () => {
+    if (!card) { statusEl.textContent = "Falta ?card= en la URL del QR."; return; }
+    if (!videoBlob) { statusEl.textContent = "No hay vídeo para subir."; return; }
+
+    const effectiveNfc = nfcId || "";
+    statusEl.textContent = "Preparando subida…";
+    prog.style.display = "block";
+    prog.value = 0;
+
+    // Enviamos como multipart/form-data
+    const fd = new FormData();
+    fd.append("card", card);
+    fd.append("nfc", effectiveNfc);
+    fd.append("video", videoBlob, `vinculo_${card}.webm`);
+
+    try {
+      // Para progreso real haría falta XHR; fetch no expone progreso fácil.
+      // MVP: barra “falsa” mientras sube.
+      const tick = setInterval(() => { prog.value = Math.min(95, prog.value + 2); }, 200);
+
+      const res = await fetch(APPS_SCRIPT_URL, { method: "POST", body: fd });
+      clearInterval(tick);
+
+      const data = await res.json().catch(() => ({}));
+      prog.value = 100;
+
+      if (res.ok && data.ok) {
+        statusEl.textContent = "✅ Vídeo subido y actualizado en Drive.";
+      } else {
+        statusEl.textContent = "❌ Error: " + (data.error || "respuesta no válida");
+      }
+    } catch (e) {
+      statusEl.textContent = "❌ Error de red al subir.";
+    }
+  });
+</script>
+</body>
+</html>
