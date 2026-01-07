@@ -12,11 +12,11 @@ export async function POST(
   const { public_code } = await context.params;
 
   const form = await req.formData();
-  const token = String(form.get("t") ?? "");
+
   const file = form.get("video") as File | null;
 
   if (!file) return NextResponse.json({ error: "Falta vídeo" }, { status: 400 });
-  if (!token) return NextResponse.json({ error: "Token inválido" }, { status: 403 });
+
 
   const supabase = getSupabaseAdmin();
 
@@ -24,16 +24,14 @@ export async function POST(
   // Si tu ruta es /api/u/[public_code], normalmente "public_code" es el código de la card.
   const { data: card, error } = await supabase
     .from("cards")
-    .select("card_id, card_code, upload_token, drive_file_id, event_fk, card_index")
+    .select("card_id, card_code, drive_file_id, event_fk, card_index")
     .eq("card_code", public_code)
     .single();
 
   if (error || !card) {
     return NextResponse.json({ error: "Card no encontrada" }, { status: 404 });
   }
-  if (!card.upload_token || card.upload_token !== token) {
-    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
-  }
+ 
 
   // Datos del evento
   const { data: ev, error: evErr } = await supabase
