@@ -4,15 +4,9 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 import { uploadOrReplaceVideoToDrive } from "@/lib/drive";
 import { createEventFolder } from "@/lib/drive";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 
-function getSupabaseAdmin() {
-  return createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { persistSession: false } }
-  );
-}
 
 export async function generateCardsForEvent(formData: FormData) {
   const events_id = Number(formData.get("events_id"));
@@ -138,12 +132,9 @@ export async function uploadCardVideoAction(formData: FormData) {
       fileName,
       file,
     });
-    console.log("Drive result:", result);
-    const stableViewUrl =
-      result.viewUrl && result.viewUrl.trim().length > 0
-        ? result.viewUrl
-        : `https://drive.google.com/file/d/${result.fileId}/view?usp=sharing`;
+  console.log("Drive result:", result);
 
+const stableViewUrl = `https://drive.google.com/file/d/${result.fileId}/view?usp=sharing`;
     const startIndex = (groupIndex - 1) * ev.num_tags_tipo + 1;
     const endIndex = groupIndex * ev.num_tags_tipo;
 
