@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
-import { getSupabaseAdmin } from "@/lib/supabase/admin"; // el que ya usas
-import { uploadOrReplaceVideoToDrive } from "@/lib/drive"; // ajusta la ruta real
+import type { NextRequest } from "next/server";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { uploadOrReplaceVideoToDrive } from "@/lib/drive";
 
-export async function POST(req: Request, ctx: { params: Promise<{ card_code: string }> }) {
-  const { card_code } = await ctx.params;
+type Params = { public_code: string };
+
+export async function POST(
+  req: NextRequest,
+  context: { params: Promise<Params> }
+) {
+  const { public_code } = await context.params;
 
   const form = await req.formData();
   const token = String(form.get("t") ?? "");
@@ -14,10 +20,12 @@ export async function POST(req: Request, ctx: { params: Promise<{ card_code: str
 
   const supabase = getSupabaseAdmin();
 
+  // OJO: aquí estabas usando card_code (variable inexistente)
+  // Si tu ruta es /api/u/[public_code], normalmente "public_code" es el código de la card.
   const { data: card, error } = await supabase
     .from("cards")
     .select("card_id, card_code, upload_token, drive_file_id, event_fk, card_index")
-    .eq("card_code", card_code)
+    .eq("card_code", public_code)
     .single();
 
   if (error || !card) {
@@ -27,7 +35,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ card_code: str
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  // Necesitamos datos del evento para decidir folder + TAG-X.mp4 (igual que tu action)
+  // Datos del evento
   const { data: ev, error: evErr } = await supabase
     .from("Eventos")
     .select("drive_folder_id, num_tags_tipo")
@@ -49,7 +57,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ card_code: str
 
   const viewUrl = `https://drive.google.com/file/d/${result.fileId}/view?usp=sharing`;
 
-  // Actualiza el grupo de cards igual que haces ya
+  // Actualiza grupo
   const startIndex = (groupIndex - 1) * ev.num_tags_tipo + 1;
   const endIndex = groupIndex * ev.num_tags_tipo;
 
@@ -61,7 +69,6 @@ export async function POST(req: Request, ctx: { params: Promise<{ card_code: str
       initial_video_url: viewUrl,
       recording_status: "GRABADA",
       recorded_at: new Date().toISOString(),
-      // notes: null,
     })
     .eq("event_fk", card.event_fk)
     .gte("card_index", startIndex)
@@ -71,6 +78,5 @@ export async function POST(req: Request, ctx: { params: Promise<{ card_code: str
     return NextResponse.json({ error: updErr.message }, { status: 500 });
   }
 
-  // Redirige de vuelta a la página de la tarjeta (sin perder el token)
-  return NextResponse.redirect(new URL(`/c/${encodeURIComponent(card_code)}?t=${encodeURIComponent(token)}`, req.url));
+  return NextResponse.json({ ok: true, public_code });
 }
