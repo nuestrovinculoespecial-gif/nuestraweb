@@ -142,3 +142,23 @@ export async function uploadOrReplaceVideoToDrive(opts: {
   if (!created.data.id) throw new Error("No se pudo subir el archivo a Drive");
   return { fileId: created.data.id, mode: "created" as const };
 }
+
+export async function replaceDriveFileContent(opts: {
+  fileId: string;
+  buffer: Buffer;
+  mimeType: string;
+}) {
+  const drive = driveClient();
+
+  const upd = await drive.files.update({
+    fileId: opts.fileId,
+    media: {
+      mimeType: opts.mimeType || "video/mp4",
+      body: Readable.from(opts.buffer),
+    },
+    fields: "id",
+  });
+
+  return { fileId: upd.data.id! };
+}
+
