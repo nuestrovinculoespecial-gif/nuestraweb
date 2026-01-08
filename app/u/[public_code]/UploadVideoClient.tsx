@@ -33,7 +33,19 @@ export default function UploadVideoClient({ publicCode }: { publicCode: string }
       if (error) throw error;
 
       setStatus(`OK. Subido a Supabase: ${tempPath}`);
-      // En el paso 3 llamaremos aquí a /api/u/[public_code]/finalize
+      setStatus("Subido. Enviando a Drive…");
+
+      const res = await fetch(`/api/u/${publicCode}/finalize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tempPath, mimeType: file.type }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "Finalize failed");
+
+      setStatus("✅ Listo. Vídeo actualizado en Drive.");
+
     } catch (err: any) {
       console.error(err);
       setStatus(`Error: ${err?.message || "fallo subiendo"}`);
