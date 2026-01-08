@@ -109,7 +109,7 @@ export async function uploadCardVideoAction(formData: FormData) {
     if (cardErr) throw new Error("cardErr: " + cardErr.message);
     if (!card?.event_fk) throw new Error("La card no tiene event_fk");
 
-   
+
     const { data: ev, error: evErr } = await supabase
       .from("Eventos")
       .select("drive_folder_id,num_tags_tipo")
@@ -132,9 +132,9 @@ export async function uploadCardVideoAction(formData: FormData) {
       fileName,
       file,
     });
-  console.log("Drive result:", result);
+    console.log("Drive result:", result);
 
-const stableViewUrl = `https://drive.google.com/file/d/${result.fileId}/view?usp=sharing`;
+    const stableViewUrl = `https://drive.google.com/file/d/${result.fileId}/view?usp=sharing`;
     const startIndex = (groupIndex - 1) * ev.num_tags_tipo + 1;
     const endIndex = groupIndex * ev.num_tags_tipo;
 

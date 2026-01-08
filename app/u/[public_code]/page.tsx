@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-
+import UploadVideoClient from "./UploadVideoClient";
 export default async function UpdatePage({
   params,
 }: {
@@ -188,18 +188,8 @@ export default async function UpdatePage({
                 </ul>
               </div>
 
-              <button
-                type="button"
-                disabled
-                className="mt-6 w-full rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-[#0B1020] shadow-lg shadow-white/10 opacity-60"
-                title="En el siguiente paso lo activamos"
-              >
-                Subir nuestro vídeo de recuerdo
-              </button>
+       <UploadVideoClient publicCode={public_code} />
 
-              <p className="mt-3 text-center text-xs text-white/45">
-                Botón desactivado por ahora · siguiente paso: subida real
-              </p>
             </>
           )}
         </div>
