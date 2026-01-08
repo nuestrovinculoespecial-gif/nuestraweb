@@ -4,7 +4,7 @@ export function getSupabaseAdmin() {
   const url = process.env.SUPABASE_URL;
   const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!url) throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL");
+  if (!url) throw new Error("Missing SUPABASE_URL");
   if (!serviceRole) throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
 
   return createClient(url, serviceRole, {
