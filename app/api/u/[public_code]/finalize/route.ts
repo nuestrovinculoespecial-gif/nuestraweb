@@ -67,7 +67,7 @@ export async function POST(
         upload_disabled_at: new Date().toISOString(),
         recorded_at: new Date().toISOString(),
       })
-      .eq("card_id", card.id);
+      .eq("card_id", card.card_id);
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {
