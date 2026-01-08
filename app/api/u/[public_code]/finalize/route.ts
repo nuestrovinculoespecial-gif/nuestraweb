@@ -20,7 +20,7 @@ export async function POST(
     // 1) Buscar la card
     const { data: card, error } = await supabase
       .from("cards")
-      .select("id, drive_file_id, upload_enabled")
+      .select("card_id, drive_file_id, upload_enabled")
       .eq("public_code", public_code)
       .single();
 
