@@ -3,11 +3,11 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { replaceDriveFileContent } from "@/lib/drive";
 
 export async function POST(
-    req: Request,
-    { params }: { params: { public_code: string } }
+  req: Request,
+  { params }: { params: Promise<{ public_code: string }> }
 ) {
-    try {
-        const public_code = params.public_code;
+  const { public_code } = await params;
+
 
         const { tempPath, mimeType } = await req.json();
 
