@@ -8,6 +8,7 @@ export async function POST(
 ) {
   try {
     const { public_code } = await params;
+    console.log("FINALIZE public_code:", public_code);
     const { tempPath, mimeType } = await req.json();
 
     if (!tempPath) {
