@@ -1,11 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { createEventAction, generateCardsForEvent } from "./actions";
+import { createEventAction } from "./actions";
 import { uploadCardVideoAction } from "./actions";
-import ClientDetail from "../_components/ClientDetail";
 import QRCode from "qrcode";
-
-
 
 function NewEventForm({ id_cliente }: { id_cliente: string }) {
   return (
@@ -15,7 +12,6 @@ function NewEventForm({ id_cliente }: { id_cliente: string }) {
       <form action={createEventAction} className="space-y-3">
         <input type="hidden" name="id_cliente" value={id_cliente} />
 
-        {/* Tipo de evento */}
         <div>
           <label className="block text-sm">Tipo de evento</label>
           <select
@@ -32,7 +28,6 @@ function NewEventForm({ id_cliente }: { id_cliente: string }) {
           </select>
         </div>
 
-        {/* Modalidad de vídeo */}
         <div>
           <label className="block text-sm">Modalidad de vídeo</label>
           <select
@@ -41,12 +36,8 @@ function NewEventForm({ id_cliente }: { id_cliente: string }) {
             required
             defaultValue="upgrade"
           >
-            <option value="upgrade">
-              Upgrade (Drive: se puede actualizar)
-            </option>
-            <option value="fix">
-              Fix (YouTube: vídeo fijo)
-            </option>
+            <option value="upgrade">Upgrade (Drive: se puede actualizar)</option>
+            <option value="fix">Fix (YouTube: vídeo fijo)</option>
           </select>
         </div>
 
@@ -64,7 +55,7 @@ function NewEventForm({ id_cliente }: { id_cliente: string }) {
           <div>
             <label className="block text-sm">numero_tags_tipo</label>
             <input
-              name="numero_tags_tipo"
+              name="num_tags_tipo"
               type="number"
               min={0}
               className="w-full rounded border p-2"
@@ -95,10 +86,7 @@ function NewEventForm({ id_cliente }: { id_cliente: string }) {
           Generar cards al crear el evento
         </label>
 
-        <button
-          className="rounded bg-black px-3 py-2 text-white"
-          type="submit"
-        >
+        <button className="rounded bg-black px-3 py-2 text-white" type="submit">
           Crear evento
         </button>
       </form>
@@ -111,44 +99,105 @@ export default async function Page({
 }: {
   params: Promise<{ id_cliente: string }>;
 }) {
-  const { id_cliente } = await params; // ✅ unwrap
+  const { id_cliente } = await params;
+  const clientId = id_cliente; // ✅ NO lo convertimos a Number (puede ser uuid/string)
 
-  const clientId = Number(id_cliente);
-
-  if (!Number.isFinite(clientId)) {
-    throw new Error("id_cliente inválido");
-  }
+  console.log("ADMIN CLIENT DETAIL HIT", { id_cliente: clientId });
 
   const supabase = await createClient();
 
-  const { data: client, error: clientErr } = await supabase
-    .from("clientes")
-    .select("*")
-    .eq("id_cliente", clientId)
-    .single();
-  if (clientErr) throw new Error(clientErr.message);
+  // -------- CLIENTE --------
+  let client: any = null;
+  let clientErrMsg: string | null = null;
 
-  const { data: events, error: eventsErr } = await supabase
-    .from("Eventos")
-    .select(
-      "events_id, created_at, fecha_evento, tipo_evento, event_code, pagado, numero_tags_diferentes, num_tags_tipo, modalidad_video"
-    )
-    .eq("id_cliente", clientId)
-    .order("created_at", { ascending: false });
-  if (eventsErr) throw new Error(eventsErr.message);
+  {
+    const { data, error } = await supabase
+      .from("clientes")
+      .select("*")
+      .eq("id_cliente", clientId)
+      .single();
 
-  const eventIds = (events ?? []).map((e) => e.events_id);
-  console.log("eventIds:", eventIds, "types:", eventIds.map((x) => typeof x));
-  const { data: cards, error: cardsErr } = eventIds.length
-    ? await supabase
-      .from("cards")
-      .select("card_id, created_at, initial_video_url, video_actualizado, drive_file_id, card_code, event_fk, recording_status")
-      .in("event_fk", eventIds)
-      .order("created_at", { ascending: false })
-    : { data: [], error: null as any };
+    if (error) {
+      clientErrMsg = error.message;
+      console.error("ADMIN CLIENT ERROR FULL", error);
+    } else {
+      client = data;
+    }
 
-  if (cardsErr) throw new Error(cardsErr.message);
-  // Generar QR (dataURL) por cada card, usando initial_video_url
+    console.log("ADMIN CLIENT RESULT", { hasClient: !!client, error: clientErrMsg });
+  }
+
+  // -------- EVENTOS (intentamos "Eventos" y si falla, "eventos") --------
+  let events: any[] = [];
+  let eventsErrMsg: string | null = null;
+
+  async function fetchEvents(tableName: string) {
+    return supabase
+      .from(tableName)
+      .select(
+        "events_id, created_at, fecha_evento, tipo_evento, event_code, pagado, numero_tags_diferentes, num_tags_tipo, modalidad_video"
+      )
+      .eq("id_cliente", clientId)
+      .order("created_at", { ascending: false });
+  }
+
+  {
+    const first = await fetchEvents("Eventos");
+    if (first.error) {
+      console.warn("EVENTS: table 'Eventos' failed, trying 'eventos'...");
+      const second = await fetchEvents("eventos");
+
+      if (second.error) {
+        eventsErrMsg = second.error.message;
+        console.error("ADMIN CLIENT EVENTS ERROR FULL", second.error);
+      } else {
+        events = second.data ?? [];
+      }
+    } else {
+      events = first.data ?? [];
+    }
+
+    console.log("ADMIN CLIENT EVENTS RESULT", {
+      hasEvents: !!events,
+      eventsCount: events?.length ?? 0,
+      error: eventsErrMsg,
+    });
+  }
+
+  // -------- CARDS --------
+  let cards: any[] = [];
+  let cardsErrMsg: string | null = null;
+
+  {
+    const eventIds = (events ?? []).map((e) => e.events_id).filter(Boolean);
+
+    console.log("ADMIN CLIENT EVENT IDS", { eventIds });
+
+    if (eventIds.length) {
+      const { data, error } = await supabase
+        .from("cards")
+        .select(
+          "card_id, created_at, initial_video_url, video_actualizado, drive_file_id, card_code, event_fk, recording_status"
+        )
+        .in("event_fk", eventIds)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        cardsErrMsg = error.message;
+        console.error("ADMIN CLIENT CARDS ERROR FULL", error);
+      } else {
+        cards = data ?? [];
+      }
+    }
+
+    console.log("ADMIN CLIENT CARDS RESULT", {
+      hasCards: !!cards,
+      cardsCount: cards?.length ?? 0,
+      error: cardsErrMsg,
+    });
+  }
+
+  // -------- QR --------
   const qrByCardId = new Map<string, string>();
 
   await Promise.all(
@@ -162,13 +211,32 @@ export default async function Page({
     })
   );
 
+  // -------- UI --------
   return (
     <div className="p-6 space-y-6 scroll-smooth">
       <Link className="underline text-sm" href="/admin/clients">
         ← Volver a clientes
       </Link>
 
-      {/* Header ficha cliente */}
+      {/* Avisos si algo falló (sin romper la página) */}
+      {clientErrMsg ? (
+        <div className="rounded border p-3 bg-amber-50 text-sm">
+          ⚠️ Error cargando cliente: {clientErrMsg}
+        </div>
+      ) : null}
+
+      {eventsErrMsg ? (
+        <div className="rounded border p-3 bg-amber-50 text-sm">
+          ⚠️ Error cargando eventos: {eventsErrMsg}
+        </div>
+      ) : null}
+
+      {cardsErrMsg ? (
+        <div className="rounded border p-3 bg-amber-50 text-sm">
+          ⚠️ Error cargando cards: {cardsErrMsg}
+        </div>
+      ) : null}
+
       <div className="rounded border p-4 bg-white">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
@@ -186,7 +254,6 @@ export default async function Page({
             </div>
           </div>
 
-          {/* CTA simple: baja al formulario */}
           <a
             href="#nuevo-evento"
             className="rounded bg-black px-4 py-2 text-white whitespace-nowrap"
@@ -196,11 +263,9 @@ export default async function Page({
         </div>
       </div>
 
-      {/* Eventos (mantenemos ClientDetail tal cual por ahora) */}
       <div className="space-y-3">
         <h2 className="text-lg font-semibold">Eventos</h2>
-        {/* Lista UI de eventos (solo visual) */}
-        {/* Lista UI de eventos (desplegable con cards) */}
+
         <div className="space-y-3">
           {(events ?? []).length === 0 ? (
             <div className="rounded border p-4 bg-white text-sm text-gray-600">
@@ -209,11 +274,12 @@ export default async function Page({
           ) : (
             <div className="grid gap-3">
               {(events ?? []).map((e, idx) => {
-                const eventCards = (cards ?? []).filter((c) => c.event_fk === e.events_id);
+                const eventCards = (cards ?? []).filter(
+                  (c) => c.event_fk === e.events_id
+                );
 
                 const expected =
                   (e.numero_tags_diferentes ?? 0) * (e.num_tags_tipo ?? 0);
-
                 const missing =
                   expected > 0 ? Math.max(expected - eventCards.length, 0) : null;
 
@@ -221,22 +287,27 @@ export default async function Page({
                   <details
                     key={e.events_id}
                     className="rounded border bg-white"
-                    open={idx === 0} // opcional: abre el más reciente
+                    open={idx === 0}
                   >
                     <summary className="cursor-pointer list-none p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-medium">{e.tipo_evento ?? "Evento"}</span>
+                            <span className="font-medium">
+                              {e.tipo_evento ?? "Evento"}
+                            </span>
                             {e.event_code ? (
-                              <span className="text-xs text-gray-500">{e.event_code}</span>
+                              <span className="text-xs text-gray-500">
+                                {e.event_code}
+                              </span>
                             ) : null}
                           </div>
 
                           <div className="mt-2 flex flex-wrap gap-2 text-sm">
                             <span
-                              className={`rounded border px-2 py-1 ${e.pagado ? "bg-green-50" : "bg-amber-50"
-                                }`}
+                              className={`rounded border px-2 py-1 ${
+                                e.pagado ? "bg-green-50" : "bg-amber-50"
+                              }`}
                             >
                               {e.pagado ? "Pagado" : "Pendiente"}
                             </span>
@@ -248,8 +319,9 @@ export default async function Page({
 
                             {missing !== null ? (
                               <span
-                                className={`rounded border px-2 py-1 ${missing === 0 ? "bg-green-50" : "bg-amber-50"
-                                  }`}
+                                className={`rounded border px-2 py-1 ${
+                                  missing === 0 ? "bg-green-50" : "bg-amber-50"
+                                }`}
                               >
                                 {missing === 0 ? "Completas" : `Faltan ${missing}`}
                               </span>
@@ -257,7 +329,9 @@ export default async function Page({
                           </div>
                         </div>
 
-                        <span className="text-xs text-gray-500 mt-1">Ver cards ▾</span>
+                        <span className="text-xs text-gray-500 mt-1">
+                          Ver cards ▾
+                        </span>
                       </div>
                     </summary>
 
@@ -269,7 +343,10 @@ export default async function Page({
                       ) : (
                         <div className="grid gap-2">
                           {eventCards.map((c) => (
-                            <div key={c.card_id} className="rounded border p-3 text-sm bg-white">
+                            <div
+                              key={c.card_id}
+                              className="rounded border p-3 text-sm bg-white"
+                            >
                               <div className="flex items-center justify-between gap-3">
                                 <div className="mt-3 flex items-center gap-4">
                                   <div className="shrink-0 rounded bg-white p-2 border">
@@ -291,7 +368,6 @@ export default async function Page({
                                       {c.initial_video_url ?? ""}
                                     </div>
 
-                                    {/* Estado interno de grabación (si lo quieres visible) */}
                                     {"recording_status" in c ? (
                                       <div className="mt-2 text-xs">
                                         <span className="rounded border px-2 py-1 bg-gray-50">
@@ -307,15 +383,20 @@ export default async function Page({
                                 </span>
 
                                 <span
-                                  className={`rounded border px-2 py-1 text-xs ${c.video_actualizado ? "bg-green-50" : "bg-gray-50"
-                                    }`}
+                                  className={`rounded border px-2 py-1 text-xs ${
+                                    c.video_actualizado ? "bg-green-50" : "bg-gray-50"
+                                  }`}
                                 >
                                   {c.video_actualizado ? "Vídeo OK" : "Pendiente"}
                                 </span>
+
                                 {e.modalidad_video === "upgrade" ? (
-                                  <form action={uploadCardVideoAction} className="mt-3 flex flex-wrap items-center gap-2">
+                                  <form
+                                    action={uploadCardVideoAction}
+                                    className="mt-3 flex flex-wrap items-center gap-2"
+                                  >
                                     <input type="hidden" name="card_id" value={c.card_id} />
-                                    <input type="hidden" name="client_id" value={clientId} />
+                                    <input type="hidden" name="client_id" value={String(clientId)} />
 
                                     <input
                                       type="file"
@@ -325,12 +406,14 @@ export default async function Page({
                                       required
                                     />
 
-                                    <button className="rounded bg-black px-3 py-2 text-white text-sm" type="submit">
+                                    <button
+                                      className="rounded bg-black px-3 py-2 text-white text-sm"
+                                      type="submit"
+                                    >
                                       {c.drive_file_id ? "Reemplazar" : "Subir"}
                                     </button>
                                   </form>
                                 ) : null}
-
                               </div>
                             </div>
                           ))}
@@ -343,17 +426,12 @@ export default async function Page({
             </div>
           )}
         </div>
-
-        {/* <ClientDetail client={client} events={events ?? []} cards={cards ?? []} /> */}
-
       </div>
 
-      {/* Formulario nuevo evento abajo */}
       <div id="nuevo-evento" className="space-y-3">
         <h2 className="text-lg font-semibold">Crear evento</h2>
         <NewEventForm id_cliente={String(clientId)} />
       </div>
     </div>
   );
-
 }
