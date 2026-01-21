@@ -6,7 +6,13 @@ function driveClient() {
   const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET!;
   const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI!;
   const refreshToken = process.env.GOOGLE_OAUTH_REFRESH_TOKEN!;
-
+console.log("DRIVE OAUTH ENVS", {
+  hasClientId: !!clientId,
+  hasSecret: !!clientSecret,
+  hasRedirect: !!redirectUri,
+  refreshLen: refreshToken?.length ?? 0,
+  redirect: redirectUri,
+});
   if (!clientId || !clientSecret || !redirectUri || !refreshToken) {
     throw new Error("Faltan envs de OAuth (CLIENT_ID/SECRET/REDIRECT_URI/REFRESH_TOKEN)");
   }
