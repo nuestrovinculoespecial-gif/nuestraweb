@@ -100,9 +100,7 @@ export default async function Page({
   params: Promise<{ id_cliente: string }>;
 }) {
   const { id_cliente } = await params;
-  const clientId = id_cliente; // ✅ NO lo convertimos a Number (puede ser uuid/string)
-
-  console.log("ADMIN CLIENT DETAIL HIT", { id_cliente: clientId });
+  const clientId = id_cliente;
 
   const supabase = await createClient();
 
@@ -117,17 +115,11 @@ export default async function Page({
       .eq("id_cliente", clientId)
       .single();
 
-    if (error) {
-      clientErrMsg = error.message;
-      console.error("ADMIN CLIENT ERROR FULL", error);
-    } else {
-      client = data;
-    }
-
-    console.log("ADMIN CLIENT RESULT", { hasClient: !!client, error: clientErrMsg });
+    if (error) clientErrMsg = error.message;
+    else client = data;
   }
 
-  // -------- EVENTOS (intentamos "Eventos" y si falla, "eventos") --------
+  // -------- EVENTOS --------
   let events: any[] = [];
   let eventsErrMsg: string | null = null;
 
@@ -144,24 +136,12 @@ export default async function Page({
   {
     const first = await fetchEvents("Eventos");
     if (first.error) {
-      console.warn("EVENTS: table 'Eventos' failed, trying 'eventos'...");
       const second = await fetchEvents("eventos");
-
-      if (second.error) {
-        eventsErrMsg = second.error.message;
-        console.error("ADMIN CLIENT EVENTS ERROR FULL", second.error);
-      } else {
-        events = second.data ?? [];
-      }
+      if (second.error) eventsErrMsg = second.error.message;
+      else events = second.data ?? [];
     } else {
       events = first.data ?? [];
     }
-
-    console.log("ADMIN CLIENT EVENTS RESULT", {
-      hasEvents: !!events,
-      eventsCount: events?.length ?? 0,
-      error: eventsErrMsg,
-    });
   }
 
   // -------- CARDS --------
@@ -170,8 +150,6 @@ export default async function Page({
 
   {
     const eventIds = (events ?? []).map((e) => e.events_id).filter(Boolean);
-
-    console.log("ADMIN CLIENT EVENT IDS", { eventIds });
 
     if (eventIds.length) {
       const { data, error } = await supabase
@@ -182,33 +160,23 @@ export default async function Page({
         .in("event_fk", eventIds)
         .order("created_at", { ascending: false });
 
-      if (error) {
-        cardsErrMsg = error.message;
-        console.error("ADMIN CLIENT CARDS ERROR FULL", error);
-      } else {
-        cards = data ?? [];
-      }
+      if (error) cardsErrMsg = error.message;
+      else cards = data ?? [];
     }
-
-    console.log("ADMIN CLIENT CARDS RESULT", {
-      hasCards: !!cards,
-      cardsCount: cards?.length ?? 0,
-      error: cardsErrMsg,
-    });
   }
 
-  // -------- QR --------
+  // -------- QR (2 QRs fijos: Drive + Update) --------
   const qrDriveByCardId = new Map<string, string>();
   const qrUpdateByCardId = new Map<string, string>();
 
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
   if (!baseUrl) console.warn("Falta NEXT_PUBLIC_SITE_URL");
 
   await Promise.all(
     (cards ?? []).map(async (c) => {
       const cardId = String(c.card_id);
 
-      // QR del vídeo (Drive)
+      // QR del vídeo (Drive) -> SOLO initial_video_url
       if (c.initial_video_url) {
         const qrDrive = await QRCode.toDataURL(String(c.initial_video_url), {
           margin: 1,
@@ -217,7 +185,7 @@ export default async function Page({
         qrDriveByCardId.set(cardId, qrDrive);
       }
 
-      // QR de actualizar (con public_code)
+      // QR de actualizar -> SOLO public_code
       if (baseUrl && c.public_code) {
         const updateUrl = `${baseUrl}/u/${c.public_code}?mode=update`;
         const qrUpdate = await QRCode.toDataURL(updateUrl, {
@@ -236,7 +204,6 @@ export default async function Page({
         ← Volver a clientes
       </Link>
 
-      {/* Avisos si algo falló (sin romper la página) */}
       {clientErrMsg ? (
         <div className="rounded border p-3 bg-amber-50 text-sm">
           ⚠️ Error cargando cliente: {clientErrMsg}
@@ -323,8 +290,9 @@ export default async function Page({
 
                           <div className="mt-2 flex flex-wrap gap-2 text-sm">
                             <span
-                              className={`rounded border px-2 py-1 ${e.pagado ? "bg-green-50" : "bg-amber-50"
-                                }`}
+                              className={`rounded border px-2 py-1 ${
+                                e.pagado ? "bg-green-50" : "bg-amber-50"
+                              }`}
                             >
                               {e.pagado ? "Pagado" : "Pendiente"}
                             </span>
@@ -336,8 +304,9 @@ export default async function Page({
 
                             {missing !== null ? (
                               <span
-                                className={`rounded border px-2 py-1 ${missing === 0 ? "bg-green-50" : "bg-amber-50"
-                                  }`}
+                                className={`rounded border px-2 py-1 ${
+                                  missing === 0 ? "bg-green-50" : "bg-amber-50"
+                                }`}
                               >
                                 {missing === 0 ? "Completas" : `Faltan ${missing}`}
                               </span>
@@ -358,102 +327,131 @@ export default async function Page({
                         </div>
                       ) : (
                         <div className="grid gap-2">
-                          {eventCards.map((c) => (
-                            <div
-                              key={c.card_id}
-                              className="rounded border p-3 text-sm bg-white"
-                            >
-                              <div className="flex items-center justify-between gap-3">
-                                <div className="mt-3 flex items-center gap-4">
-                                  <div className="shrink-0 rounded bg-white p-2 border">
-                                    <div className="grid grid-cols-2 gap-3">
+                          {eventCards.map((c) => {
+                            const driveUrl = c.initial_video_url
+                              ? String(c.initial_video_url)
+                              : "";
+                            const updateUrl =
+                              baseUrl && c.public_code
+                                ? `${baseUrl}/u/${c.public_code}?mode=update`
+                                : "";
 
-                                      {/* QR del vídeo en Drive */}
-                                      <div className="flex flex-col items-center gap-2">
-                                        {qrDriveByCardId.get(String(c.card_id)) ? (
-                                          <img
-                                            src={qrDriveByCardId.get(String(c.card_id))}
-                                            className="h-32 w-32"
-                                          />
-                                        ) : (
-                                          <div className="h-32 w-32 grid place-items-center text-xs text-gray-400 border">
-                                            Sin vídeo
-                                          </div>
-                                        )}
-                                        <span className="text-[11px] text-gray-600">QR vídeo</span>
+                            return (
+                              <div
+                                key={c.card_id}
+                                className="rounded border p-3 text-sm bg-white"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="mt-3 flex items-start gap-4">
+                                    <div className="shrink-0 rounded bg-white p-2 border">
+                                      <div className="grid grid-cols-2 gap-3">
+                                        {/* QR Drive */}
+                                        <div className="flex flex-col items-center gap-2">
+                                          {qrDriveByCardId.get(String(c.card_id)) ? (
+                                            <img
+                                              src={qrDriveByCardId.get(String(c.card_id))}
+                                              className="h-32 w-32"
+                                              alt="QR vídeo (Drive)"
+                                            />
+                                          ) : (
+                                            <div className="h-32 w-32 grid place-items-center text-xs text-gray-400 border rounded">
+                                              Sin vídeo
+                                            </div>
+                                          )}
+                                          <span className="text-[11px] text-gray-600">
+                                            QR vídeo (Drive)
+                                          </span>
+                                          <span className="text-[10px] text-gray-400 break-all max-w-[160px]">
+                                            {driveUrl || "—"}
+                                          </span>
+                                        </div>
+
+                                        {/* QR Update */}
+                                        <div className="flex flex-col items-center gap-2">
+                                          {qrUpdateByCardId.get(String(c.card_id)) ? (
+                                            <img
+                                              src={qrUpdateByCardId.get(String(c.card_id))}
+                                              className="h-32 w-32"
+                                              alt="QR actualizar"
+                                            />
+                                          ) : (
+                                            <div className="h-32 w-32 grid place-items-center text-xs text-gray-400 border rounded">
+                                              Sin QR
+                                            </div>
+                                          )}
+                                          <span className="text-[11px] text-gray-600">
+                                            QR actualizar
+                                          </span>
+                                          <span className="text-[10px] text-gray-400 break-all max-w-[160px]">
+                                            {updateUrl || "—"}
+                                          </span>
+                                        </div>
                                       </div>
+                                    </div>
 
-                                      {/* QR para actualizar */}
-                                      <div className="flex flex-col items-center gap-2">
-                                        {qrUpdateByCardId.get(String(c.card_id)) ? (
-                                          <img
-                                            src={qrUpdateByCardId.get(String(c.card_id))}
-                                            className="h-32 w-32"
-                                          />
-                                        ) : (
-                                          <div className="h-32 w-32 grid place-items-center text-xs text-gray-400 border">
-                                            Sin QR
-                                          </div>
-                                        )}
-                                        <span className="text-[11px] text-gray-600">QR actualizar</span>
-                                      </div>
-
+                                    <div className="min-w-0">
+                                      {"recording_status" in c ? (
+                                        <div className="mt-2 text-xs">
+                                          <span className="rounded border px-2 py-1 bg-gray-50">
+                                            {c.recording_status}
+                                          </span>
+                                        </div>
+                                      ) : null}
                                     </div>
                                   </div>
 
-                                  <div className="min-w-0">
-                                    <div className="text-xs text-gray-500 break-all">
-                                      {c.initial_video_url ?? ""}
-                                    </div>
+                                  <div className="flex flex-col items-end gap-2">
+                                    <span className="font-medium">
+                                      {c.card_code ?? `Card #${c.card_id}`}
+                                    </span>
 
-                                    {"recording_status" in c ? (
-                                      <div className="mt-2 text-xs">
-                                        <span className="rounded border px-2 py-1 bg-gray-50">
-                                          {c.recording_status}
-                                        </span>
-                                      </div>
+                                    <span
+                                      className={`rounded border px-2 py-1 text-xs ${
+                                        c.video_actualizado
+                                          ? "bg-green-50"
+                                          : "bg-gray-50"
+                                      }`}
+                                    >
+                                      {c.video_actualizado ? "Vídeo OK" : "Pendiente"}
+                                    </span>
+
+                                    {e.modalidad_video === "upgrade" ? (
+                                      <form
+                                        action={uploadCardVideoAction}
+                                        className="mt-3 flex flex-wrap items-center gap-2"
+                                      >
+                                        <input
+                                          type="hidden"
+                                          name="card_id"
+                                          value={c.card_id}
+                                        />
+                                        <input
+                                          type="hidden"
+                                          name="client_id"
+                                          value={String(clientId)}
+                                        />
+
+                                        <input
+                                          type="file"
+                                          name="video"
+                                          accept="video/*"
+                                          className="text-sm"
+                                          required
+                                        />
+
+                                        <button
+                                          className="rounded bg-black px-3 py-2 text-white text-sm"
+                                          type="submit"
+                                        >
+                                          {c.drive_file_id ? "Reemplazar" : "Subir"}
+                                        </button>
+                                      </form>
                                     ) : null}
                                   </div>
                                 </div>
-
-                                <span className="font-medium">
-                                  {c.card_code ?? `Card #${c.card_id}`}
-                                </span>
-
-                                <span
-                                  className={`rounded border px-2 py-1 text-xs ${c.video_actualizado ? "bg-green-50" : "bg-gray-50"
-                                    }`}
-                                >
-                                  {c.video_actualizado ? "Vídeo OK" : "Pendiente"}
-                                </span>
-
-                                {e.modalidad_video === "upgrade" ? (
-                                  <form
-                                    action={uploadCardVideoAction}
-                                    className="mt-3 flex flex-wrap items-center gap-2"
-                                  >
-                                    <input type="hidden" name="card_id" value={c.card_id} />
-                                    <input type="hidden" name="client_id" value={String(clientId)} />
-
-                                    <input
-                                      type="file"
-                                      name="video"
-                                      accept="video/*"
-                                      className="text-sm"
-                                      required
-                                    />
-
-                                    <button
-                                      className="rounded bg-black px-3 py-2 text-white text-sm"
-                                      type="submit"
-                                    >
-                                      {c.drive_file_id ? "Reemplazar" : "Subir"}
-                                    </button>
-                                  </form>
-                                ) : null}
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </div>
