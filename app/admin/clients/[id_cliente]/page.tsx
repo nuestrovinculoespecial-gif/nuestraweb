@@ -198,8 +198,7 @@ export default async function Page({
   }
 
   // -------- QR --------
-
-  const qrInitialByCardId = new Map<string, string>();
+  const qrDriveByCardId = new Map<string, string>();
   const qrUpdateByCardId = new Map<string, string>();
 
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
@@ -207,17 +206,26 @@ export default async function Page({
 
   await Promise.all(
     (cards ?? []).map(async (c) => {
-      if (!c.public_code || !baseUrl) return;
+      const cardId = String(c.card_id);
 
-      const initialUrl = `${baseUrl}/u/${c.public_code}`;               // subir por primera vez
-      const updateUrl = `${baseUrl}/u/${c.public_code}?mode=update`;   // actualizar/reemplazar
+      // QR del vídeo (Drive)
+      if (c.initial_video_url) {
+        const qrDrive = await QRCode.toDataURL(String(c.initial_video_url), {
+          margin: 1,
+          width: 180,
+        });
+        qrDriveByCardId.set(cardId, qrDrive);
+      }
 
-      const qrInitial = await QRCode.toDataURL(initialUrl, { margin: 1, width: 180 });
-      qrInitialByCardId.set(String(c.card_id), qrInitial);
-
-      // Este solo lo necesitaremos si ya hay vídeo o si quieres mostrarlo siempre
-      const qrUpdate = await QRCode.toDataURL(updateUrl, { margin: 1, width: 180 });
-      qrUpdateByCardId.set(String(c.card_id), qrUpdate);
+      // QR de actualizar (con public_code)
+      if (baseUrl && c.public_code) {
+        const updateUrl = `${baseUrl}/u/${c.public_code}?mode=update`;
+        const qrUpdate = await QRCode.toDataURL(updateUrl, {
+          margin: 1,
+          width: 180,
+        });
+        qrUpdateByCardId.set(cardId, qrUpdate);
+      }
     })
   );
 
@@ -358,30 +366,39 @@ export default async function Page({
                               <div className="flex items-center justify-between gap-3">
                                 <div className="mt-3 flex items-center gap-4">
                                   <div className="shrink-0 rounded bg-white p-2 border">
-                                    {(() => {
-                                      const hasVideo = !!c.initial_video_url || !!c.video_actualizado;
+                                    <div className="grid grid-cols-2 gap-3">
 
-                                      const qrToShow = hasVideo
-                                        ? qrUpdateByCardId.get(String(c.card_id))
-                                        : qrInitialByCardId.get(String(c.card_id));
-
-                                      return qrToShow ? (
-                                        <div className="flex flex-col items-center gap-2">
+                                      {/* QR del vídeo en Drive */}
+                                      <div className="flex flex-col items-center gap-2">
+                                        {qrDriveByCardId.get(String(c.card_id)) ? (
                                           <img
-                                            src={qrToShow}
-                                            alt={`QR ${c.card_code ?? ""}`}
+                                            src={qrDriveByCardId.get(String(c.card_id))}
                                             className="h-32 w-32"
                                           />
-                                          <span className="text-[11px] text-gray-600">
-                                            {hasVideo ? "QR actualizar" : "QR subir"}
-                                          </span>
-                                        </div>
-                                      ) : (
-                                        <div className="h-32 w-32 grid place-items-center text-xs text-gray-500">
-                                          Sin QR
-                                        </div>
-                                      );
-                                    })()}
+                                        ) : (
+                                          <div className="h-32 w-32 grid place-items-center text-xs text-gray-400 border">
+                                            Sin vídeo
+                                          </div>
+                                        )}
+                                        <span className="text-[11px] text-gray-600">QR vídeo</span>
+                                      </div>
+
+                                      {/* QR para actualizar */}
+                                      <div className="flex flex-col items-center gap-2">
+                                        {qrUpdateByCardId.get(String(c.card_id)) ? (
+                                          <img
+                                            src={qrUpdateByCardId.get(String(c.card_id))}
+                                            className="h-32 w-32"
+                                          />
+                                        ) : (
+                                          <div className="h-32 w-32 grid place-items-center text-xs text-gray-400 border">
+                                            Sin QR
+                                          </div>
+                                        )}
+                                        <span className="text-[11px] text-gray-600">QR actualizar</span>
+                                      </div>
+
+                                    </div>
                                   </div>
 
                                   <div className="min-w-0">
