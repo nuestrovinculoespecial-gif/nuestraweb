@@ -32,7 +32,7 @@ console.log("[createEventAction] generate_cards raw =", formData.get("generate_c
   const tipo_evento = String(formData.get("tipo_evento") ?? "").trim();
   const fecha_evento = String(formData.get("fecha_evento") ?? "");
   const numero_tags_diferentes = Number(formData.get("numero_tags_diferentes"));
-  const numero_tags_tipo = Number(formData.get("numero_tags_tipo")); // input
+  const numero_tags_tipo = Number(formData.get("num_tags_tipo"));
   const pagado = formData.get("pagado") === "on";
   const generate_cards = formData.get("generate_cards") === "on";
   const modalidad_video = String(formData.get("modalidad_video") ?? "").trim();
@@ -56,6 +56,13 @@ console.log("[createEventAction] generate_cards raw =", formData.get("generate_c
 
   if (error) throw new Error(error.message);
   console.log("RPC create_event_with_code devuelve:", data);
+
+  if (!Number.isFinite(numero_tags_diferentes) || numero_tags_diferentes <= 0) {
+  throw new Error("numero_tags_diferentes inválido (debe ser > 0)");
+}
+if (!Number.isFinite(numero_tags_tipo) || numero_tags_tipo <= 0) {
+  throw new Error("num_tags_tipo inválido (debe ser > 0)");
+}
 
   const created = Array.isArray(data) ? data[0] : data;
   if (!created?.event_code) {
