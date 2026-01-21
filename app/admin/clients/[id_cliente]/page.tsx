@@ -198,42 +198,28 @@ export default async function Page({
   }
 
   // -------- QR --------
-  /*const qrByCardId = new Map<string, string>();
+
+  const qrInitialByCardId = new Map<string, string>();
+  const qrUpdateByCardId = new Map<string, string>();
+
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  if (!baseUrl) console.warn("Falta NEXT_PUBLIC_SITE_URL");
 
   await Promise.all(
     (cards ?? []).map(async (c) => {
-      if (!c.initial_video_url) return;
-      const dataUrl = await QRCode.toDataURL(c.initial_video_url, {
-        margin: 1,
-        width: 180,
-      });
-      qrByCardId.set(String(c.card_id), dataUrl);
+      if (!c.public_code || !baseUrl) return;
+
+      const initialUrl = `${baseUrl}/u/${c.public_code}`;               // subir por primera vez
+      const updateUrl = `${baseUrl}/u/${c.public_code}?mode=update`;   // actualizar/reemplazar
+
+      const qrInitial = await QRCode.toDataURL(initialUrl, { margin: 1, width: 180 });
+      qrInitialByCardId.set(String(c.card_id), qrInitial);
+
+      // Este solo lo necesitaremos si ya hay vídeo o si quieres mostrarlo siempre
+      const qrUpdate = await QRCode.toDataURL(updateUrl, { margin: 1, width: 180 });
+      qrUpdateByCardId.set(String(c.card_id), qrUpdate);
     })
   );
-*/
-
-
-  const qrInitialByCardId = new Map<string, string>();
-const qrUpdateByCardId = new Map<string, string>();
-
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
-if (!baseUrl) console.warn("Falta NEXT_PUBLIC_SITE_URL");
-
-await Promise.all(
-  (cards ?? []).map(async (c) => {
-    if (!c.public_code || !baseUrl) return;
-
-    const initialUrl = `${baseUrl}/u/${c.public_code}`;               // subir por primera vez
-    const updateUrl  = `${baseUrl}/u/${c.public_code}?mode=update`;   // actualizar/reemplazar
-
-    const qrInitial = await QRCode.toDataURL(initialUrl, { margin: 1, width: 180 });
-    qrInitialByCardId.set(String(c.card_id), qrInitial);
-
-    // Este solo lo necesitaremos si ya hay vídeo o si quieres mostrarlo siempre
-    const qrUpdate = await QRCode.toDataURL(updateUrl, { margin: 1, width: 180 });
-    qrUpdateByCardId.set(String(c.card_id), qrUpdate);
-  })
-);
 
   // -------- UI --------
   return (
@@ -329,9 +315,8 @@ await Promise.all(
 
                           <div className="mt-2 flex flex-wrap gap-2 text-sm">
                             <span
-                              className={`rounded border px-2 py-1 ${
-                                e.pagado ? "bg-green-50" : "bg-amber-50"
-                              }`}
+                              className={`rounded border px-2 py-1 ${e.pagado ? "bg-green-50" : "bg-amber-50"
+                                }`}
                             >
                               {e.pagado ? "Pagado" : "Pendiente"}
                             </span>
@@ -343,9 +328,8 @@ await Promise.all(
 
                             {missing !== null ? (
                               <span
-                                className={`rounded border px-2 py-1 ${
-                                  missing === 0 ? "bg-green-50" : "bg-amber-50"
-                                }`}
+                                className={`rounded border px-2 py-1 ${missing === 0 ? "bg-green-50" : "bg-amber-50"
+                                  }`}
                               >
                                 {missing === 0 ? "Completas" : `Faltan ${missing}`}
                               </span>
@@ -374,17 +358,30 @@ await Promise.all(
                               <div className="flex items-center justify-between gap-3">
                                 <div className="mt-3 flex items-center gap-4">
                                   <div className="shrink-0 rounded bg-white p-2 border">
-                                    {c.initial_video_url ? (
-                                      <img
-                                        src={qrByCardId.get(String(c.card_id))}
-                                        alt={`QR ${c.card_code ?? ""}`}
-                                        className="h-32 w-32"
-                                      />
-                                    ) : (
-                                      <div className="h-32 w-32 grid place-items-center text-xs text-gray-500">
-                                        Sin URL
-                                      </div>
-                                    )}
+                                    {(() => {
+                                      const hasVideo = !!c.initial_video_url || !!c.video_actualizado;
+
+                                      const qrToShow = hasVideo
+                                        ? qrUpdateByCardId.get(String(c.card_id))
+                                        : qrInitialByCardId.get(String(c.card_id));
+
+                                      return qrToShow ? (
+                                        <div className="flex flex-col items-center gap-2">
+                                          <img
+                                            src={qrToShow}
+                                            alt={`QR ${c.card_code ?? ""}`}
+                                            className="h-32 w-32"
+                                          />
+                                          <span className="text-[11px] text-gray-600">
+                                            {hasVideo ? "QR actualizar" : "QR subir"}
+                                          </span>
+                                        </div>
+                                      ) : (
+                                        <div className="h-32 w-32 grid place-items-center text-xs text-gray-500">
+                                          Sin QR
+                                        </div>
+                                      );
+                                    })()}
                                   </div>
 
                                   <div className="min-w-0">
@@ -407,9 +404,8 @@ await Promise.all(
                                 </span>
 
                                 <span
-                                  className={`rounded border px-2 py-1 text-xs ${
-                                    c.video_actualizado ? "bg-green-50" : "bg-gray-50"
-                                  }`}
+                                  className={`rounded border px-2 py-1 text-xs ${c.video_actualizado ? "bg-green-50" : "bg-gray-50"
+                                    }`}
                                 >
                                   {c.video_actualizado ? "Vídeo OK" : "Pendiente"}
                                 </span>
