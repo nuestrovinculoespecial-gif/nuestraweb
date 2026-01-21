@@ -25,7 +25,8 @@ export async function generateCardsForEvent(formData: FormData) {
 }
 
 export async function createEventAction(formData: FormData) {
-
+console.log("[createEventAction] form keys =", Array.from(formData.keys()));
+console.log("[createEventAction] generate_cards raw =", formData.get("generate_cards"));
   const id_cliente = Number(formData.get("id_cliente"));
   const tipo_evento = String(formData.get("tipo_evento") ?? "").trim();
   const fecha_evento = String(formData.get("fecha_evento") ?? "");
