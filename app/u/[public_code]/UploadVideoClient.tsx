@@ -16,6 +16,15 @@ export default function UploadVideoClient({ publicCode }: { publicCode: string }
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // 1) Límite de tamaño (guardarraíl)
+    const maxMb = 10; // si tus vídeos son "hasta 10MB", pon 10
+    const sizeMb = file.size / (1024 * 1024);
+    if (sizeMb > maxMb) {
+      alert(`El vídeo pesa ${sizeMb.toFixed(1)}MB. Máximo permitido: ${maxMb}MB.`);
+      e.target.value = "";
+      return;
+    }
+
     setBusy(true);
     setStatus("Subiendo a Supabase…");
 
@@ -32,20 +41,18 @@ export default function UploadVideoClient({ publicCode }: { publicCode: string }
 
       if (error) throw error;
 
-      setStatus(`OK. Subido a Supabase: ${tempPath}`);
       setStatus("Subido. Enviando a Drive…");
 
       const res = await fetch(`/api/u/${publicCode}/finalize`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tempPath, mimeType: file.type }),
+        body: JSON.stringify({ tempPath, mimeType: file.type || "video/mp4" }),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Finalize failed");
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || `Finalize failed (${res.status})`);
 
       setStatus("✅ Listo. Vídeo actualizado en Drive.");
-
     } catch (err: any) {
       console.error(err);
       setStatus(`Error: ${err?.message || "fallo subiendo"}`);
@@ -65,15 +72,10 @@ export default function UploadVideoClient({ publicCode }: { publicCode: string }
         onChange={onPickFile}
         disabled={busy}
         className="mt-3 block w-full text-sm text-white/70"
+        required
       />
 
-      {status ? (
-        <p className="mt-3 text-xs text-white/70 break-words">{status}</p>
-      ) : null}
-
-      <p className="mt-2 text-xs text-white/45">
-        (Paso 2) Ahora solo subimos a Supabase temporal.
-      </p>
+      {status ? <p className="mt-3 text-xs text-white/70 break-words">{status}</p> : null}
     </div>
   );
 }

@@ -177,7 +177,7 @@ export default async function Page({
       const { data, error } = await supabase
         .from("cards")
         .select(
-          "card_id, created_at, initial_video_url, video_actualizado, drive_file_id, card_code, event_fk, recording_status"
+          "card_id, created_at, initial_video_url, video_actualizado, drive_file_id, card_code, public_code, event_fk, recording_status"
         )
         .in("event_fk", eventIds)
         .order("created_at", { ascending: false });
@@ -198,7 +198,7 @@ export default async function Page({
   }
 
   // -------- QR --------
-  const qrByCardId = new Map<string, string>();
+  /*const qrByCardId = new Map<string, string>();
 
   await Promise.all(
     (cards ?? []).map(async (c) => {
@@ -210,6 +210,30 @@ export default async function Page({
       qrByCardId.set(String(c.card_id), dataUrl);
     })
   );
+*/
+
+
+  const qrInitialByCardId = new Map<string, string>();
+const qrUpdateByCardId = new Map<string, string>();
+
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL;
+if (!baseUrl) console.warn("Falta NEXT_PUBLIC_SITE_URL");
+
+await Promise.all(
+  (cards ?? []).map(async (c) => {
+    if (!c.public_code || !baseUrl) return;
+
+    const initialUrl = `${baseUrl}/u/${c.public_code}`;               // subir por primera vez
+    const updateUrl  = `${baseUrl}/u/${c.public_code}?mode=update`;   // actualizar/reemplazar
+
+    const qrInitial = await QRCode.toDataURL(initialUrl, { margin: 1, width: 180 });
+    qrInitialByCardId.set(String(c.card_id), qrInitial);
+
+    // Este solo lo necesitaremos si ya hay vídeo o si quieres mostrarlo siempre
+    const qrUpdate = await QRCode.toDataURL(updateUrl, { margin: 1, width: 180 });
+    qrUpdateByCardId.set(String(c.card_id), qrUpdate);
+  })
+);
 
   // -------- UI --------
   return (
