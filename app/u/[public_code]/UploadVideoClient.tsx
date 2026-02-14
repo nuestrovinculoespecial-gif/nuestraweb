@@ -135,10 +135,11 @@ export default function UploadVideoClient({ publicCode }: { publicCode: string }
           />
           <div className="min-w-0">
             <p className="text-sm text-white/85">
-              He leído y acepto la autorización para subir este vídeo.
+              Autorizo la subida de este vídeo para que sea almacenado de forma privada y compartido con la familia del evento.
             </p>
             <p className="mt-1 text-xs text-white/60">
-              Incluye consentimiento para grabación y compartir con la familia si aparecen menores. Se compartirá de forma privada.
+              El vídeo se guarda en un espacio privado gestionado por Vínculo y solo será accesible para la familia a través de su tarjeta.
+              Confirmo que tengo permiso para grabar y compartir a las personas que aparecen, incluidos menores si los hubiera.
             </p>
             <button
               type="button"
