@@ -71,10 +71,10 @@ export async function POST(
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {
-    console.error(err);
-    return NextResponse.json({
-      ok: true,
-      drive_file_id: card.drive_file_id,
-    });
+    console.error("FINALIZE ERROR", err);
+    return NextResponse.json(
+      { error: "Finalize failed" },
+      { status: 500 }
+    );
   }
 }
