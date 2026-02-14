@@ -1,18 +1,24 @@
 import { createClient } from "@/lib/supabase/server";
 import UploadVideoClient from "./UploadVideoClient";
+
 export default async function UpdatePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ public_code: string }>;
+  searchParams?: Promise<{ debug?: string }>;
 }) {
   const { public_code } = await params;
+  const sp = (await searchParams) ?? {};
+  const debug = sp.debug === "1";
 
   const supabase = await createClient();
 
   const { data: card, error } = await supabase
     .from("cards")
     .select(
-      "card_code, public_code, upload_enabled, upload_disabled_at, video_actualizado"
+      // ✅ añadimos drive_file_id + initial_video_url para saber si ya hay vídeo
+      "card_code, public_code, upload_enabled, upload_disabled_at, video_actualizado, drive_file_id, initial_video_url"
     )
     .eq("public_code", public_code)
     .single();
@@ -58,6 +64,9 @@ export default async function UpdatePage({
 
   const disabled = !card.upload_enabled;
 
+  // ✅ “hay vídeo” = o bien ya existe el file en Drive, o bien ya hay url guardada
+  const hasVideo = !!card.drive_file_id || !!card.initial_video_url;
+
   const StatusPill = ({
     tone,
     children,
@@ -69,8 +78,8 @@ export default async function UpdatePage({
       tone === "ok"
         ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
         : tone === "warn"
-        ? "border-amber-300/20 bg-amber-400/10 text-amber-100"
-        : "border-white/10 bg-white/5 text-white/70";
+          ? "border-amber-300/20 bg-amber-400/10 text-amber-100"
+          : "border-white/10 bg-white/5 text-white/70";
 
     return (
       <span
@@ -95,25 +104,47 @@ export default async function UpdatePage({
         <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-xs text-white/60">Vínculo · Actualización</p>
+              <p className="text-xs text-white/60">Vínculo</p>
               <h1 className="mt-2 text-2xl font-semibold tracking-tight">
-                Subir nuestro vídeo de recuerdo
+                Deja tu recuerdo en vídeo 💛
               </h1>
               <p className="mt-2 text-sm text-white/70">
-                Estás a punto de actualizar el vídeo asociado a esta tarjeta.
+                La familia lo recibirá de forma privada a través de esta moneda.
               </p>
             </div>
 
             <div className="shrink-0">
-              <div className="grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-white/5">
-                <span className="text-lg">🎞️</span>
-              </div>
+              {debug ? (
+                <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs text-white/60">Tarjeta</p>
+                      <p className="mt-1 truncate text-sm font-medium">{card.card_code}</p>
+                    </div>
+
+                    <div className="text-right">
+                      <p className="text-xs text-white/60">Código</p>
+                      <p className="mt-1 font-mono text-xs text-white/70">
+                        {card.public_code}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <p className="text-sm text-white/80">Tarjeta verificada ✅</p>
+                  <p className="mt-1 text-xs text-white/60">
+                    Este vídeo se compartirá de forma privada con la familia.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
           <div className="mt-5 flex flex-wrap gap-2">
-            <StatusPill tone={card.video_actualizado ? "ok" : "warn"}>
-              {card.video_actualizado ? "Vídeo existente" : "Aún no hay vídeo"}
+            {/* ✅ pill correcta */}
+            <StatusPill tone={hasVideo ? "ok" : "warn"}>
+              {hasVideo ? "Vídeo listo para ver" : "Aún no hay vídeo"}
             </StatusPill>
 
             <StatusPill tone={disabled ? "neutral" : "ok"}>
@@ -144,7 +175,7 @@ export default async function UpdatePage({
         <div className="mt-6 rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur">
           {disabled ? (
             <>
-              <h2 className="text-lg font-semibold">Actualización cerrada</h2>
+              <h2 className="text-lg font-semibold">Subida cerrada</h2>
               <p className="mt-2 text-sm text-white/70">
                 Esta etiqueta ya no permite subir vídeos. Si necesitas reabrirlo,
                 actívalo desde el panel de administración.
@@ -161,10 +192,13 @@ export default async function UpdatePage({
             </>
           ) : (
             <>
-              <h2 className="text-lg font-semibold">Listo para subir</h2>
+              <h2 className="text-lg font-semibold">
+                {hasVideo ? "Listo para actualizar" : "Listo para subir"}
+              </h2>
               <p className="mt-2 text-sm text-white/70">
-                En el siguiente paso añadiremos el selector de vídeo y la subida
-                real a Drive. De momento, te dejo el diseño final ya preparado.
+                {hasVideo
+                  ? "Selecciona tu nuevo vídeo. Reemplazará el anterior y la familia lo verá en el mismo enlace."
+                  : "Selecciona tu vídeo y súbelo. Quedará guardado de forma privada para la familia."}
               </p>
 
               <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -176,20 +210,25 @@ export default async function UpdatePage({
                   </li>
                   <li className="flex gap-2">
                     <span className="mt-0.5">•</span>
-                    <span>
-                      Si el audio es importante, graba en un lugar con poco
-                      ruido.
-                    </span>
+                    <span>Si el audio es importante, graba en un lugar con poco ruido.</span>
                   </li>
                   <li className="flex gap-2">
                     <span className="mt-0.5">•</span>
-                    <span>Una vez subido, reemplazará el vídeo anterior.</span>
+                    <span>
+                      El vídeo debe pesar menos de 10 MB. Si pesa más, envíatelo por WhatsApp o email
+                      y vuelve a descargarlo para que se comprima.
+                    </span>
                   </li>
+                  {hasVideo ? (
+                    <li className="flex gap-2">
+                      <span className="mt-0.5">•</span>
+                      <span>Al subir, este vídeo quedará como el más reciente.</span>
+                    </li>
+                  ) : null}
                 </ul>
               </div>
 
-       <UploadVideoClient publicCode={public_code} />
-
+              <UploadVideoClient publicCode={public_code} />
             </>
           )}
         </div>
