@@ -102,7 +102,7 @@ export default async function UpdatePage({
       <div className="relative mx-auto max-w-xl px-6 py-10">
         {/* Header */}
         <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-2xl backdrop-blur">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <p className="text-xs text-white/60">Vínculo</p>
               <h1 className="mt-2 text-2xl font-semibold tracking-tight">
@@ -113,7 +113,7 @@ export default async function UpdatePage({
               </p>
             </div>
 
-            <div className="shrink-0">
+            <div className="w-full sm:w-auto sm:shrink-0">
               {debug ? (
                 <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 p-4">
                   <div className="flex items-center justify-between gap-3">
