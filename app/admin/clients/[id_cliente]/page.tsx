@@ -155,10 +155,10 @@ export default async function Page({
       const { data, error } = await supabase
         .from("cards")
         .select(
-          "card_id, created_at, initial_video_url, video_actualizado, drive_file_id, card_code, public_code, event_fk, recording_status"
+          "card_id, card_index, created_at, initial_video_url, video_actualizado, drive_file_id, card_code, public_code, event_fk, recording_status"
         )
         .in("event_fk", eventIds)
-        .order("created_at", { ascending: false });
+        .order("card_index", { ascending: true });
 
       if (error) cardsErrMsg = error.message;
       else cards = data ?? [];

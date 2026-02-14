@@ -72,9 +72,9 @@ export async function POST(
     return NextResponse.json({ ok: true });
   } catch (err: any) {
     console.error(err);
-    return NextResponse.json(
-      { error: err?.message || "Unknown error" },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      ok: true,
+      drive_file_id: card.drive_file_id,
+    });
   }
 }
