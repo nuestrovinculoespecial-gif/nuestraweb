@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { createEventAction } from "./actions";
-import { uploadCardVideoAction } from "./actions";
 import QRCode from "qrcode";
+import UploadCardVideoAdmin from "./UploadCardVideoAdmin";
 
 function NewEventForm({ id_cliente }: { id_cliente: string }) {
   return (
@@ -290,9 +290,8 @@ export default async function Page({
 
                           <div className="mt-2 flex flex-wrap gap-2 text-sm">
                             <span
-                              className={`rounded border px-2 py-1 ${
-                                e.pagado ? "bg-green-50" : "bg-amber-50"
-                              }`}
+                              className={`rounded border px-2 py-1 ${e.pagado ? "bg-green-50" : "bg-amber-50"
+                                }`}
                             >
                               {e.pagado ? "Pagado" : "Pendiente"}
                             </span>
@@ -304,9 +303,8 @@ export default async function Page({
 
                             {missing !== null ? (
                               <span
-                                className={`rounded border px-2 py-1 ${
-                                  missing === 0 ? "bg-green-50" : "bg-amber-50"
-                                }`}
+                                className={`rounded border px-2 py-1 ${missing === 0 ? "bg-green-50" : "bg-amber-50"
+                                  }`}
                               >
                                 {missing === 0 ? "Completas" : `Faltan ${missing}`}
                               </span>
@@ -406,46 +404,19 @@ export default async function Page({
                                     </span>
 
                                     <span
-                                      className={`rounded border px-2 py-1 text-xs ${
-                                        c.video_actualizado
+                                      className={`rounded border px-2 py-1 text-xs ${c.video_actualizado
                                           ? "bg-green-50"
                                           : "bg-gray-50"
-                                      }`}
+                                        }`}
                                     >
                                       {c.video_actualizado ? "Vídeo OK" : "Pendiente"}
                                     </span>
 
                                     {e.modalidad_video === "upgrade" ? (
-                                      <form
-                                        action={uploadCardVideoAction}
-                                        className="mt-3 flex flex-wrap items-center gap-2"
-                                      >
-                                        <input
-                                          type="hidden"
-                                          name="card_id"
-                                          value={c.card_id}
-                                        />
-                                        <input
-                                          type="hidden"
-                                          name="client_id"
-                                          value={String(clientId)}
-                                        />
-
-                                        <input
-                                          type="file"
-                                          name="video"
-                                          accept="video/*"
-                                          className="text-sm"
-                                          required
-                                        />
-
-                                        <button
-                                          className="rounded bg-black px-3 py-2 text-white text-sm"
-                                          type="submit"
-                                        >
-                                          {c.drive_file_id ? "Reemplazar" : "Subir"}
-                                        </button>
-                                      </form>
+                                      <UploadCardVideoAdmin
+                                        cardId={String(c.card_id)}
+                                        clientId={String(clientId)}
+                                      />
                                     ) : null}
                                   </div>
                                 </div>
